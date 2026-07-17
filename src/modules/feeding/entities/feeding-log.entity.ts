@@ -1,0 +1,32 @@
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { FeedScheduleEntity } from './feed-schedule.entity';
+import { PondEntity } from '../../ponds/entities/pond.entity/pond.entity';
+
+@Entity('feeding_logs')
+export class FeedingLogEntity {
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @Column({ name: 'pond_id' })
+  pondId: string;
+
+  @ManyToOne(() => PondEntity, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'pond_id' })
+  pond: PondEntity;
+
+  @Column({ name: 'schedule_id', nullable: true })
+  scheduleId: string;
+
+  @ManyToOne(() => FeedScheduleEntity, (schedule) => schedule.logs)
+  @JoinColumn({ name: 'schedule_id' })
+  schedule: FeedScheduleEntity;
+
+  @Column({ name: 'feed_amount', type: 'decimal', precision: 10, scale: 2, nullable: true })
+  feedAmount: number;
+
+  @Column({ name: 'status', nullable: true })
+  status: string;
+
+  @Column({ name: 'fed_at', type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  fedAt: Date;
+}

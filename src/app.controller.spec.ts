@@ -15,8 +15,18 @@ describe('AppController', () => {
   });
 
   describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
+    it('should return a healthy API response', () => {
+      const response = appController.getHello();
+      expect(response.success).toBe(true);
+      expect(response.message).toContain('FishCap API');
+    });
+  });
+
+  describe('auth', () => {
+    it('should return a success payload for login requests', () => {
+      const response = appController.login({ username: 'demo', password: 'password123' });
+      expect(response.success).toBe(true);
+      expect(response.data.token).toBeDefined();
     });
   });
 });

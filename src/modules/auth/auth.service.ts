@@ -1,11 +1,19 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class AuthService {
   constructor(private readonly usersService: UsersService) {}
 
-  async validateUser(email: string, password: string) {
-    return this.usersService.validateCredentials(email, password);
+  async validateUser(identifier: string, password: string) {
+    if (!identifier) {
+      throw new BadRequestException('Email is required to sign in');
+    }
+
+    if (!identifier.includes('@')) {
+      throw new BadRequestException('Please sign in with your email address');
+    }
+
+    return this.usersService.validateCredentials(identifier, password);
   }
 }

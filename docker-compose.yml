@@ -1,0 +1,39 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: fishcap-db
+
+    environment:
+      POSTGRES_USER: fishcap_user
+      POSTGRES_PASSWORD: fishcap123
+      POSTGRES_DB: fishcap_db
+
+    ports:
+      - "5433:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./src/database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: fishcap-api
+
+    depends_on:
+      - postgres
+
+    environment:
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_USERNAME: fishcap_user
+      DATABASE_PASSWORD: fishcap123
+      DATABASE_NAME: fishcap_db
+
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_data:

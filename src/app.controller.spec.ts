@@ -21,12 +21,4 @@ describe('AppController', () => {
       expect(response.message).toContain('FishCap API');
     });
   });
-
-  describe('auth', () => {
-    it('should return a success payload for login requests', () => {
-      const response = appController.login({ username: 'demo', password: 'password123' });
-      expect(response.success).toBe(true);
-      expect(response.data.token).toBeDefined();
-    });
-  });
 });

@@ -1,34 +1,62 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  NotFoundException,
+  Param,
+  Patch,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PondsService } from './ponds.service';
 import { CreatePondDto } from './dto/create-pond.dto';
 import { UpdatePondDto } from './dto/update-pond.dto';
 
 @Controller('ponds')
+@UseGuards(JwtAuthGuard)
 export class PondsController {
   constructor(private readonly pondsService: PondsService) {}
 
   @Post()
-  create(@Body() createPondDto: CreatePondDto) {
-    return this.pondsService.create(createPondDto);
+  async create(@Req() req, @Body() createPondDto: CreatePondDto) {
+    // JwtStrategy.validate() returns { id, email } — use req.user.id consistently.
+    const userId = req.user.id;
+    const pond = await this.pondsService.create(createPondDto, userId);
+    return { success: true, data: pond };
   }
 
   @Get()
-  findAll() {
-    return this.pondsService.findAll();
+  async findAll(@Req() req) {
+    const userId = req.user.id;
+    const ponds = await this.pondsService.findAll(userId);
+    return { success: true, data: ponds };
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.pondsService.findOne(id);
+  async findOne(@Req() req, @Param('id') id: string) {
+    const userId = req.user.id;
+    const pond = await this.pondsService.findOne(id, userId);
+    return { success: true, data: pond };
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updatePondDto: UpdatePondDto) {
-    return this.pondsService.update(id, updatePondDto);
+  async update(
+    @Req() req,
+    @Param('id') id: string,
+    @Body() updatePondDto: UpdatePondDto,
+  ) {
+    const userId = req.user.id;
+    const pond = await this.pondsService.update(id, updatePondDto, userId);
+    return { success: true, data: pond };
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.pondsService.remove(id);
+  async remove(@Req() req, @Param('id') id: string) {
+    const userId = req.user.id;
+    await this.pondsService.remove(id, userId);
+    return { success: true, message: 'Pond deleted' };
   }
 }

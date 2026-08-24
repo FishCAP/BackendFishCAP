@@ -20,7 +20,7 @@ export class ReportsService {
     const pondCount = await this.pondRepository.count();
     const feedLogCount = await this.feedingLogRepository.count();
     const latestSensor = await this.sensorDataRepository.find({
-      order: { recordedAt: 'DESC' },
+      order: { createdAt: 'DESC' },
       take: 1,
     });
 

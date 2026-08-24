@@ -18,13 +18,24 @@ export class NotificationsService {
   }
 
   async findAll(): Promise<NotificationEntity[]> {
-    return this.notificationsRepository.find({ relations: { user: true } });
+    const notes = await this.notificationsRepository.find({ relations: { user: true } });
+    return notes.map((n) => {
+      if (n.user && (n.user as any).passwordHash) {
+        const { passwordHash, ...safeUser } = n.user as any;
+        return { ...n, user: safeUser } as NotificationEntity;
+      }
+      return n;
+    });
   }
 
   async findOne(id: string): Promise<NotificationEntity> {
     const notification = await this.notificationsRepository.findOne({ where: { id }, relations: { user: true } });
     if (!notification) {
       throw new NotFoundException('Notification not found');
+    }
+    if (notification.user && (notification.user as any).passwordHash) {
+      const { passwordHash, ...safeUser } = notification.user as any;
+      return { ...notification, user: safeUser } as NotificationEntity;
     }
     return notification;
   }

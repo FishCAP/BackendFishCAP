@@ -1,35 +1,76 @@
-import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
-import { UserEntity } from '../../../users/entities/user.entity/user.entity';
+// pond.entity.ts
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  OneToMany,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
+import { UserEntity } from '../../../users/entities/user.entity';
 import { DeviceEntity } from '../../../sensors/entities/device.entity';
 import { FeedScheduleEntity } from '../../../feeding/entities/feed-schedule.entity';
 
 @Entity('ponds')
 export class PondEntity {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
-  @Column({ name: 'pond_name' })
-  pondName: string;
+  @Column()
+  name!: string;
 
-  @Column({ name: 'fish_type', nullable: true })
-  fishType: string;
+  @Column({ nullable: true })
+  location?: string;
 
-  @Column({ name: 'fish_count', type: 'integer', nullable: true })
-  fishCount: number;
+  @Column({ nullable: true })
+  species?: string;
 
-  @Column({ name: 'created_at', type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
-  createdAt: Date;
+  @Column({ type: 'int', nullable: true })
+  estimatedCount?: number;
 
-  @Column({ name: 'user_id' })
-  userId: string;
+  @Column({ type: 'date', nullable: true })
+  startDate?: string;
 
-  @ManyToOne(() => UserEntity, (user) => user.ponds, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'user_id' })
-  user: UserEntity;
+  @Column({ type: 'date', nullable: true })
+  endDate?: string;
+
+  @Column({ type: 'simple-array', nullable: true })
+  feedingTimes?: string[];
+
+  @Column({ type: 'float', nullable: true })
+  amount?: number;
+
+  @Column({ nullable: true })
+  hardwareId?: string;
+
+  @Column({ default: 'active', nullable: true })
+  status?: string;
+
+  @Column({ nullable: true })
+  statusColor?: string;
+
+  @Column({ type: 'boolean', default: false, nullable: true })
+  hasAlert?: boolean;
+
+  @Column({ nullable: true })
+  temperature?: string; // or number if you prefer
+
+  @ManyToOne(() => UserEntity, (user) => user.ponds, {
+    onDelete: 'CASCADE',
+    nullable: false,
+  })
+  owner!: UserEntity;
 
   @OneToMany(() => DeviceEntity, (device) => device.pond)
-  devices: DeviceEntity[];
+  devices!: DeviceEntity[];
 
   @OneToMany(() => FeedScheduleEntity, (schedule) => schedule.pond)
-  feedSchedules: FeedScheduleEntity[];
+  feedSchedules!: FeedScheduleEntity[];
+
+  @CreateDateColumn()
+  created_at!: Date;
+
+  @UpdateDateColumn()
+  updated_at!: Date;
 }

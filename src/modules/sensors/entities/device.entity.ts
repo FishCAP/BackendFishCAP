@@ -1,6 +1,5 @@
-import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { PondEntity } from '../../ponds/entities/pond.entity/pond.entity';
-import { SensorDataEntity } from './sensor-data.entity';
 
 @Entity('devices')
 export class DeviceEntity {
@@ -20,6 +19,4 @@ export class DeviceEntity {
   @JoinColumn({ name: 'pond_id' })
   pond: PondEntity;
 
-  @OneToMany(() => SensorDataEntity, (sensorData) => sensorData.device)
-  sensorData: SensorDataEntity[];
 }

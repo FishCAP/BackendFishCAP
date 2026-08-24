@@ -1,5 +1,5 @@
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
-import { UserEntity } from '../../../users/entities/user.entity/user.entity';
+import { UserEntity } from '../../../users/entities/user.entity';
 
 @Entity('notifications')
 export class NotificationEntity {

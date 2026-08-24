@@ -4,7 +4,7 @@ CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     full_name VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
-    password_hash TEXT NOT NULL,
+    password_hash TEXT,
     phone VARCHAR(20),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -13,8 +13,18 @@ CREATE TABLE ponds (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL,
     pond_name VARCHAR(100) NOT NULL,
+    location VARCHAR(255),
     fish_type VARCHAR(100),
     fish_count INTEGER,
+    start_date VARCHAR(20),
+    end_date VARCHAR(20),
+    feeding_times JSONB,
+    amount DECIMAL(10,2),
+    hardware_id VARCHAR(100),
+    status VARCHAR(20),
+    status_color VARCHAR(20),
+    has_alert BOOLEAN DEFAULT FALSE,
+    temperature VARCHAR(20),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_pond_user
@@ -69,7 +79,9 @@ CREATE TABLE sensor_data (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     device_id UUID NOT NULL,
     temperature DECIMAL(5,2),
-    recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    ph DECIMAL(4,2),
+    dissolved_oxygen DECIMAL(5,2),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_sensor_device
     FOREIGN KEY(device_id)

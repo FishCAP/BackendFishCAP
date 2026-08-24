@@ -1,3 +1,4 @@
+// ponds.service.ts
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -9,37 +10,42 @@ import { UpdatePondDto } from './dto/update-pond.dto';
 export class PondsService {
   constructor(
     @InjectRepository(PondEntity)
-    private readonly pondsRepository: Repository<PondEntity>,
+    private pondsRepository: Repository<PondEntity>,
   ) {}
 
-  async create(createPondDto: CreatePondDto): Promise<PondEntity> {
-    const pond = this.pondsRepository.create(createPondDto);
+  async create(createPondDto: CreatePondDto, userId: string): Promise<PondEntity> {
+    const pond = this.pondsRepository.create({
+      ...createPondDto,
+      owner: { id: userId },
+    });
     return this.pondsRepository.save(pond);
   }
 
-  async findAll(): Promise<PondEntity[]> {
-    return this.pondsRepository.find({ relations: { user: true, devices: true } });
+  async findAll(userId: string): Promise<PondEntity[]> {
+    return this.pondsRepository.find({
+      where: { owner: { id: userId } },
+      relations: { owner: true },
+      order: { created_at: 'DESC' },
+    });
   }
 
-  async findOne(id: string): Promise<PondEntity> {
-    const pond = await this.pondsRepository.findOne({ where: { id }, relations: { user: true, devices: true } });
-    if (!pond) {
-      throw new NotFoundException('Pond not found');
-    }
+  async findOne(id: string, userId: string): Promise<PondEntity> {
+    const pond = await this.pondsRepository.findOne({
+      where: { id, owner: { id: userId } },
+      relations: { owner: true },
+    });
+    if (!pond) throw new NotFoundException('Pond not found or not owned by user');
     return pond;
   }
 
-  async update(id: string, updatePondDto: UpdatePondDto): Promise<PondEntity> {
-    const pond = await this.findOne(id);
-    const updated = { ...pond, ...updatePondDto };
-    await this.pondsRepository.save(updated);
-    return this.findOne(id);
+  async update(id: string, updatePondDto: UpdatePondDto, userId: string): Promise<PondEntity> {
+    const pond = await this.findOne(id, userId);
+    Object.assign(pond, updatePondDto);
+    return this.pondsRepository.save(pond);
   }
 
-  async remove(id: string): Promise<void> {
-    const result = await this.pondsRepository.delete(id);
-    if (result.affected === 0) {
-      throw new NotFoundException('Pond not found');
-    }
+  async remove(id: string, userId: string): Promise<void> {
+    const pond = await this.findOne(id, userId);
+    await this.pondsRepository.delete(id);
   }
 }

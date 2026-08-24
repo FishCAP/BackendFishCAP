@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { DeviceEntity } from './entities/device.entity';
@@ -21,11 +21,11 @@ export class SensorsService {
   }
 
   async findAllDevices(): Promise<DeviceEntity[]> {
-    return this.deviceRepository.find({ relations: { pond: true, sensorData: true } });
+    return this.deviceRepository.find({ relations: { pond: true } });
   }
 
   async findDevice(id: string): Promise<DeviceEntity> {
-    const device = await this.deviceRepository.findOne({ where: { id }, relations: { pond: true, sensorData: true } });
+    const device = await this.deviceRepository.findOne({ where: { id }, relations: { pond: true } });
     if (!device) {
       throw new NotFoundException('Device not found');
     }
@@ -33,16 +33,36 @@ export class SensorsService {
   }
 
   async createSensorData(createSensorDataDto: CreateSensorDataDto): Promise<SensorDataEntity> {
-    const sensorData = this.sensorDataRepository.create(createSensorDataDto);
+    if (!createSensorDataDto.deviceId.trim()) {
+      throw new BadRequestException('deviceId is required');
+    }
+    const sensorData = this.sensorDataRepository.create({
+      deviceId: createSensorDataDto.deviceId,
+      temperature: createSensorDataDto.temperature,
+      ph: createSensorDataDto.ph,
+      dissolvedOxygen: createSensorDataDto.dissolvedOxygen,
+      ...(createSensorDataDto.timestamp == null
+          ? {}
+          : { createdAt: new Date(createSensorDataDto.timestamp) }),
+    });
     return this.sensorDataRepository.save(sensorData);
   }
 
   async findAllSensorData(): Promise<SensorDataEntity[]> {
-    return this.sensorDataRepository.find({ relations: { device: true } });
+    return this.sensorDataRepository.find({
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async findLatestSensorData(): Promise<SensorDataEntity[]> {
+    return this.sensorDataRepository.find({
+      order: { createdAt: 'DESC' },
+      take: 20,
+    });
   }
 
   async findSensorData(id: string): Promise<SensorDataEntity> {
-    const sensorData = await this.sensorDataRepository.findOne({ where: { id }, relations: { device: true } });
+    const sensorData = await this.sensorDataRepository.findOne({ where: { id } });
     if (!sensorData) {
       throw new NotFoundException('Sensor data not found');
     }

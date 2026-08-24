@@ -1,21 +1,29 @@
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
-import { DeviceEntity } from './device.entity';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 
 @Entity('sensor_data')
 export class SensorDataEntity {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
+
+  // A hardware identifier, not a foreign key. An ESP32 can send its first
+  // reading before an operator has registered a dashboard device record.
+  @Column({ name: 'device_id', type: 'varchar', length: 100 })
+  deviceId!: string;
 
   @Column({ name: 'temperature', type: 'decimal', precision: 5, scale: 2, nullable: true })
-  temperature: number;
+  temperature?: number;
 
-  @Column({ name: 'recorded_at', type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
-  recordedAt: Date;
+  @Column({ name: 'ph', type: 'decimal', precision: 4, scale: 2, nullable: true })
+  ph?: number;
 
-  @Column({ name: 'device_id' })
-  deviceId: string;
+  @Column({ name: 'dissolved_oxygen', type: 'decimal', precision: 5, scale: 2, nullable: true })
+  dissolvedOxygen?: number;
 
-  @ManyToOne(() => DeviceEntity, (device) => device.sensorData, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'device_id' })
-  device: DeviceEntity;
+  @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
+  createdAt!: Date;
 }

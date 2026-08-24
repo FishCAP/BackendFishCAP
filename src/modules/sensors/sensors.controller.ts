@@ -27,9 +27,21 @@ export class SensorsController {
     return this.sensorsService.createSensorData(createSensorDataDto);
   }
 
+  // ESP32-friendly endpoint: POST /api/sensor-data
+  @Post('sensor-data')
+  createSensorDataFromDevice(@Body() createSensorDataDto: CreateSensorDataDto) {
+    return this.sensorsService.createSensorData(createSensorDataDto);
+  }
+
   @Get('data')
   findAllSensorData() {
     return this.sensorsService.findAllSensorData();
+  }
+
+  // Latest readings for the Flutter SensorDashboard
+  @Get('sensor-data/latest')
+  getLatestSensorData() {
+    return this.sensorsService.findLatestSensorData();
   }
 
   @Get('data/:id')

@@ -1,11 +1,12 @@
 // pond.entity.ts
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
   ManyToOne,
   OneToMany,
-  CreateDateColumn,
+  PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { UserEntity } from '../../../users/entities/user.entity';
@@ -17,49 +18,50 @@ export class PondEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column()
+  @Column({ name: 'pond_name', type: 'varchar', length: 100, nullable: false })
   name!: string;
 
-  @Column({ nullable: true })
+  @Column({ name: 'location', type: 'varchar', length: 255, nullable: true })
   location?: string;
 
-  @Column({ nullable: true })
+  @Column({ name: 'fish_type', type: 'varchar', length: 100, nullable: true })
   species?: string;
 
-  @Column({ type: 'int', nullable: true })
+  @Column({ name: 'fish_count', type: 'int', nullable: true })
   estimatedCount?: number;
 
-  @Column({ type: 'date', nullable: true })
+  @Column({ name: 'start_date', type: 'varchar', length: 20, nullable: true })
   startDate?: string;
 
-  @Column({ type: 'date', nullable: true })
+  @Column({ name: 'end_date', type: 'varchar', length: 20, nullable: true })
   endDate?: string;
 
-  @Column({ type: 'simple-array', nullable: true })
+  @Column({ name: 'feeding_times', type: 'jsonb', nullable: true })
   feedingTimes?: string[];
 
-  @Column({ type: 'float', nullable: true })
+  @Column({ name: 'amount', type: 'decimal', precision: 10, scale: 2, nullable: true })
   amount?: number;
 
-  @Column({ nullable: true })
+  @Column({ name: 'hardware_id', type: 'varchar', length: 100, nullable: true })
   hardwareId?: string;
 
-  @Column({ default: 'active', nullable: true })
+  @Column({ name: 'status', type: 'varchar', length: 20, default: 'active', nullable: true })
   status?: string;
 
-  @Column({ nullable: true })
+  @Column({ name: 'status_color', type: 'varchar', length: 20, nullable: true })
   statusColor?: string;
 
-  @Column({ type: 'boolean', default: false, nullable: true })
+  @Column({ name: 'has_alert', type: 'boolean', default: false, nullable: true })
   hasAlert?: boolean;
 
-  @Column({ nullable: true })
-  temperature?: string; // or number if you prefer
+  @Column({ name: 'temperature', type: 'varchar', length: 20, nullable: true })
+  temperature?: string;
 
   @ManyToOne(() => UserEntity, (user) => user.ponds, {
     onDelete: 'CASCADE',
     nullable: false,
   })
+  @JoinColumn({ name: 'user_id' })
   owner!: UserEntity;
 
   @OneToMany(() => DeviceEntity, (device) => device.pond)
@@ -68,9 +70,9 @@ export class PondEntity {
   @OneToMany(() => FeedScheduleEntity, (schedule) => schedule.pond)
   feedSchedules!: FeedScheduleEntity[];
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
   created_at!: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamp' })
   updated_at!: Date;
 }

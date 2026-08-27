@@ -6,19 +6,19 @@ export class NotificationEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'title' })
+  @Column({ name: 'title', type: 'varchar', length: 200, nullable: false })
   title: string;
 
   @Column({ name: 'message', type: 'text', nullable: true })
   message: string;
 
-  @Column({ name: 'is_read', default: false })
+  @Column({ name: 'is_read', type: 'boolean', default: false })
   isRead: boolean;
 
   @Column({ name: 'created_at', type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
 
-  @Column({ name: 'user_id' })
+  @Column({ name: 'user_id', type: 'uuid', nullable: false })
   userId: string;
 
   @ManyToOne(() => UserEntity, (user) => user.notifications, { onDelete: 'CASCADE' })

@@ -4,8 +4,10 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 
 // Must match the fallback in auth.module.ts to avoid signing/verifying
-// mismatches when JWT_SECRET is not set (e.g. in Docker).
-const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_fallback_key_for_development';
+// mismatches when JWT_SECRET is not set (e.g. in Docker where the runtime
+// image does not contain the .env file).
+const JWT_SECRET =
+  process.env.JWT_SECRET || 'your-secret-key-change-this-in-production';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {

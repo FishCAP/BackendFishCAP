@@ -5,10 +5,10 @@ export class OtpEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ nullable: false })
+  @Column({ name: 'email', type: 'varchar', length: 200, nullable: false })
   email: string;
 
-  @Column({ nullable: false })
+  @Column({ name: 'code', type: 'varchar', length: 20, nullable: false })
   code: string;
 
   @Column({ name: 'expires_at', type: 'timestamp', nullable: false })

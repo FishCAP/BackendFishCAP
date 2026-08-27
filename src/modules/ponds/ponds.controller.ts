@@ -14,6 +14,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PondsService } from './ponds.service';
 import { CreatePondDto } from './dto/create-pond.dto';
 import { UpdatePondDto } from './dto/update-pond.dto';
+import { AddFeedScheduleDto } from './dto/add-feed-schedule.dto';
 
 @Controller('ponds')
 @UseGuards(JwtAuthGuard)
@@ -40,6 +41,18 @@ export class PondsController {
     const userId = req.user.id;
     const pond = await this.pondsService.findOne(id, userId);
     return { success: true, data: pond };
+  }
+
+  // "Add New Time" button on the pond detail page.
+  @Post(':id/feed-schedules')
+  async addFeedSchedule(
+    @Req() req,
+    @Param('id') id: string,
+    @Body() dto: AddFeedScheduleDto,
+  ) {
+    const userId = req.user.id;
+    const schedule = await this.pondsService.addFeedSchedule(id, userId, dto);
+    return { success: true, data: schedule };
   }
 
   @Patch(':id')

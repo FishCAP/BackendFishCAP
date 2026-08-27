@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common/pipes/validation.pipe';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
@@ -27,6 +28,6 @@ async function bootstrap() {
 
   const port = Number(process.env.PORT ?? 3001);
   // Bind to 0.0.0.0 so Android emulator and external devices can reach the server
-  await app.listen(port, '0.0.0.0');
+  await app.listen(3000, '0.0.0.0');
 }
 bootstrap();

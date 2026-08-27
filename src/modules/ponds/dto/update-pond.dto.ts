@@ -1,10 +1,14 @@
+import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
   IsArray,
   IsBoolean,
   IsNumber,
   IsOptional,
   IsString,
+  ValidateNested,
 } from 'class-validator';
+import { FeedingScheduleItemDto } from './create-pond.dto';
 
 export class UpdatePondDto {
   @IsOptional()
@@ -35,6 +39,14 @@ export class UpdatePondDto {
   @IsArray()
   @IsString({ each: true })
   feedingTimes?: string[];
+
+  // Structured per-time schedule sent by newer app versions.
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @ValidateNested({ each: true })
+  @Type(() => FeedingScheduleItemDto)
+  feedingSchedules?: FeedingScheduleItemDto[];
 
   @IsOptional()
   @IsNumber()

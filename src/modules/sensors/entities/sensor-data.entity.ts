@@ -24,6 +24,22 @@ export class SensorDataEntity {
   @Column({ name: 'dissolved_oxygen', type: 'decimal', precision: 5, scale: 2, nullable: true })
   dissolvedOxygen?: number;
 
+  // --- FishCAP feeder telemetry (nullable so older rows remain valid) ---
+  @Column({ name: 'weight_grams', type: 'decimal', precision: 10, scale: 2, nullable: true })
+  weightGrams?: number;
+
+  @Column({ name: 'feeding', type: 'boolean', nullable: true })
+  feeding?: boolean;
+
+  @Column({ name: 'feed_grams_dispensed', type: 'decimal', precision: 10, scale: 2, nullable: true })
+  feedGramsDispensed?: number;
+
+  @Column({ name: 'remaining_stock_grams', type: 'decimal', precision: 10, scale: 2, nullable: true })
+  remainingStockGrams?: number;
+
+  @Column({ name: 'low_stock', type: 'boolean', nullable: true })
+  lowStock?: boolean;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
   createdAt!: Date;
 }

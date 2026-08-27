@@ -7,16 +7,16 @@ export class UserEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column({ name: 'full_name' })
+  @Column({ name: 'full_name', type: 'varchar', length: 100, nullable: false })
   fullName!: string;
 
-  @Column({ unique: true })
+  @Column({ name: 'email', type: 'varchar', length: 100, unique: true, nullable: false })
   email!: string;
 
   @Column({ name: 'password_hash', type: 'varchar', length: 255, nullable: true, select: false })
   passwordHash!: string | null;
 
-  @Column({ name: 'phone', nullable: true })
+  @Column({ name: 'phone', type: 'varchar', length: 20, nullable: true })
   phone?: string;
 
   @Column({ name: 'created_at', type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })

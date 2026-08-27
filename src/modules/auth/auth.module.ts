@@ -13,7 +13,10 @@ import { OtpService } from './otp.service';
     TypeOrmModule.forFeature([UserEntity, OtpEntity]),
     UsersModule,
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'super_secret_fallback_key_for_development',
+      // Must match the fallback in jwt.strategy.ts (and the value passed by
+      // docker-compose.yml) so signing and verification never diverge.
+      secret:
+        process.env.JWT_SECRET || 'your-secret-key-change-this-in-production',
       signOptions: { expiresIn: '24h' },
     }),
   ],

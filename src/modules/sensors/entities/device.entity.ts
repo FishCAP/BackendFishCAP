@@ -6,17 +6,16 @@ export class DeviceEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'device_code', unique: true })
+  @Column({ name: 'device_code', type: 'varchar', length: 50, unique: true, nullable: false })
   deviceCode: string;
 
-  @Column({ default: 'ONLINE' })
+  @Column({ name: 'status', type: 'varchar', length: 20, default: 'ONLINE' })
   status: string;
 
-  @Column({ name: 'pond_id' })
+  @Column({ name: 'pond_id', type: 'uuid', nullable: false })
   pondId: string;
 
   @ManyToOne(() => PondEntity, (pond) => pond.devices, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'pond_id' })
   pond: PondEntity;
-
 }

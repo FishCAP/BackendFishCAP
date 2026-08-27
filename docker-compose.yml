@@ -31,6 +31,11 @@ services:
       DATABASE_USERNAME: fishcap_user
       DATABASE_PASSWORD: fishcap123
       DATABASE_NAME: fishcap_db
+      # The runtime image has no .env file, so the JWT secret MUST be injected
+      # here. It must equal the JWT_SECRET used anywhere else (local dev .env,
+      # jwt.strategy.ts fallback) or previously issued tokens will 401 forever.
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-this-in-production}
+      JWT_EXPIRES_IN: 24h
 
     ports:
       - "3001:3000"

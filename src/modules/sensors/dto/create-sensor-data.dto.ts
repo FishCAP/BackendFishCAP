@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsDateString,
   IsNotEmpty,
   IsNumber,
@@ -22,6 +23,27 @@ export class CreateSensorDataDto {
   @IsOptional()
   @IsNumber()
   dissolvedOxygen?: number;
+
+  // --- FishCAP feeder telemetry (sent by the ESP32 on every reading) ---
+  @IsOptional()
+  @IsNumber()
+  weightGrams?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  feeding?: boolean;
+
+  @IsOptional()
+  @IsNumber()
+  feedGramsDispensed?: number;
+
+  @IsOptional()
+  @IsNumber()
+  remainingStockGrams?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  lowStock?: boolean;
 
   @IsOptional()
   @IsDateString()

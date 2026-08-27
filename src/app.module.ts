@@ -9,6 +9,7 @@ import { ConfigModule } from './config/config.module';
 import { ModulesModule } from './modules/modules.module';
 import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { SensorsModule } from './modules/sensors/sensors.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { AuthModule } from './modules/auth/auth.module';
     PondsModule,
     CommonModule,
     ModulesModule,
+    SensorsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

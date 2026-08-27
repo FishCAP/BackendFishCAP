@@ -41,6 +41,11 @@ export class SensorsService {
       temperature: createSensorDataDto.temperature,
       ph: createSensorDataDto.ph,
       dissolvedOxygen: createSensorDataDto.dissolvedOxygen,
+      weightGrams: createSensorDataDto.weightGrams,
+      feeding: createSensorDataDto.feeding,
+      feedGramsDispensed: createSensorDataDto.feedGramsDispensed,
+      remainingStockGrams: createSensorDataDto.remainingStockGrams,
+      lowStock: createSensorDataDto.lowStock,
       ...(createSensorDataDto.timestamp == null
           ? {}
           : { createdAt: new Date(createSensorDataDto.timestamp) }),

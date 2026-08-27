@@ -1,11 +1,30 @@
+import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
   IsArray,
   IsBoolean,
   IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
+  Min,
+  ValidateNested,
 } from 'class-validator';
+
+/**
+ * One feeding entry as sent by the Flutter app:
+ * feedingSchedules: [{ time: "08:30", amount: 1.5 }, ...]
+ */
+export class FeedingScheduleItemDto {
+  @IsString()
+  @IsNotEmpty()
+  time!: string;
+
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @IsOptional()
+  amount?: number;
+}
 
 export class CreatePondDto {
   @IsString()
@@ -36,6 +55,14 @@ export class CreatePondDto {
   @IsArray()
   @IsString({ each: true })
   feedingTimes?: string[];
+
+  // Structured per-time schedule sent by newer app versions.
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @ValidateNested({ each: true })
+  @Type(() => FeedingScheduleItemDto)
+  feedingSchedules?: FeedingScheduleItemDto[];
 
   @IsOptional()
   @IsNumber()

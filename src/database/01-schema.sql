@@ -4,8 +4,17 @@ CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     full_name VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
-    password_hash TEXT,
+    password_hash VARCHAR(255),
     phone VARCHAR(20),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE otps (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    email VARCHAR(200) NOT NULL,
+    code VARCHAR(20) NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    used BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -21,11 +30,12 @@ CREATE TABLE ponds (
     feeding_times JSONB,
     amount DECIMAL(10,2),
     hardware_id VARCHAR(100),
-    status VARCHAR(20),
+    status VARCHAR(20) DEFAULT 'active',
     status_color VARCHAR(20),
     has_alert BOOLEAN DEFAULT FALSE,
     temperature VARCHAR(20),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP,
 
     CONSTRAINT fk_pond_user
     FOREIGN KEY(user_id)
@@ -37,7 +47,7 @@ CREATE TABLE devices (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     pond_id UUID NOT NULL,
     device_code VARCHAR(50) UNIQUE NOT NULL,
-    status VARCHAR(20) DEFAULT 'ONLINE',
+    status VARCHAR(20) DEFAULT 'ONLINE' NOT NULL,
 
     CONSTRAINT fk_device_pond
     FOREIGN KEY(pond_id)
@@ -77,21 +87,17 @@ CREATE TABLE feeding_logs (
 
 CREATE TABLE sensor_data (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    device_id UUID NOT NULL,
+    device_id VARCHAR(100) NOT NULL,
     temperature DECIMAL(5,2),
     ph DECIMAL(4,2),
     dissolved_oxygen DECIMAL(5,2),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT fk_sensor_device
-    FOREIGN KEY(device_id)
-    REFERENCES devices(id)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE notifications (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL,
-    title VARCHAR(200),
+    title VARCHAR(200) NOT NULL,
     message TEXT,
     is_read BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

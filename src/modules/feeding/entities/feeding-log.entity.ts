@@ -7,14 +7,14 @@ export class FeedingLogEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'pond_id' })
+  @Column({ name: 'pond_id', type: 'uuid', nullable: false })
   pondId: string;
 
   @ManyToOne(() => PondEntity, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'pond_id' })
   pond: PondEntity;
 
-  @Column({ name: 'schedule_id', nullable: true })
+  @Column({ name: 'schedule_id', type: 'uuid', nullable: true })
   scheduleId: string;
 
   @ManyToOne(() => FeedScheduleEntity, (schedule) => schedule.logs)
@@ -24,7 +24,7 @@ export class FeedingLogEntity {
   @Column({ name: 'feed_amount', type: 'decimal', precision: 10, scale: 2, nullable: true })
   feedAmount: number;
 
-  @Column({ name: 'status', nullable: true })
+  @Column({ name: 'status', type: 'varchar', length: 20, nullable: true })
   status: string;
 
   @Column({ name: 'fed_at', type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })

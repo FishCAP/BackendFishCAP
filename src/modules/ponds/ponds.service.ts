@@ -331,7 +331,9 @@ export class PondsService {
   async findAll(userId: string): Promise<Record<string, unknown>[]> {
     const ponds = await this.pondsRepository.find({
       where: { owner: { id: userId } },
-      relations: { owner: true, devices: true },
+      // feedSchedules included so the Schedule tab can render each pond's
+      // feeding times + amounts with per-row edit/delete actions.
+      relations: { owner: true, devices: true, feedSchedules: true },
       order: { created_at: 'DESC' },
     });
     return Promise.all(ponds.map((pond) => this.withLatestReadings(pond)));

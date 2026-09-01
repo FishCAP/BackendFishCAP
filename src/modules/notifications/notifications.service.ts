@@ -17,8 +17,13 @@ export class NotificationsService {
     return this.notificationsRepository.save(notification);
   }
 
-  async findAll(): Promise<NotificationEntity[]> {
-    const notes = await this.notificationsRepository.find({ relations: { user: true } });
+    async findAll(userId?: string): Promise<NotificationEntity[]> {
+    const where = userId ? { user: { id: userId } } : {};
+    const notes = await this.notificationsRepository.find({
+      where,
+      relations: { user: true },
+      order: { createdAt: 'DESC' },
+    });
     return notes.map((n) => {
       if (n.user && (n.user as any).passwordHash) {
         const { passwordHash, ...safeUser } = n.user as any;
@@ -28,8 +33,13 @@ export class NotificationsService {
     });
   }
 
-  async findOne(id: string): Promise<NotificationEntity> {
-    const notification = await this.notificationsRepository.findOne({ where: { id }, relations: { user: true } });
+  async findOne(id: string, userId?: string): Promise<NotificationEntity> {
+    const where: any = { id };
+    if (userId) where.user = { id: userId };
+    const notification = await this.notificationsRepository.findOne({
+      where,
+      relations: { user: true },
+    });
     if (!notification) {
       throw new NotFoundException('Notification not found');
     }
@@ -40,15 +50,26 @@ export class NotificationsService {
     return notification;
   }
 
-  async update(id: string, updateNotificationDto: UpdateNotificationDto): Promise<NotificationEntity> {
-    const notification = await this.findOne(id);
-    const updated = { ...notification, ...updateNotificationDto };
-    await this.notificationsRepository.save(updated);
-    return this.findOne(id);
+  /// Mark all of a user's unread notifications as read.
+  async markAllRead(userId: string): Promise<{ updated: number }> {
+    const result = await this.notificationsRepository.update(
+      { user: { id: userId }, isRead: false },
+      { isRead: true },
+    );
+    return { updated: result.affected ?? 0 };
   }
 
-  async remove(id: string): Promise<void> {
-    const result = await this.notificationsRepository.delete(id);
+    async update(id: string, updateNotificationDto: UpdateNotificationDto, userId?: string): Promise<NotificationEntity> {
+    const notification = await this.findOne(id, userId);
+    const updated = { ...notification, ...updateNotificationDto };
+    await this.notificationsRepository.save(updated);
+    return this.findOne(id, userId);
+  }
+
+  async remove(id: string, userId?: string): Promise<void> {
+    const where: any = { id };
+    if (userId) where.user = { id: userId };
+    const result = await this.notificationsRepository.delete(where);
     if (result.affected === 0) {
       throw new NotFoundException('Notification not found');
     }

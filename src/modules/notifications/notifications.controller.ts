@@ -44,7 +44,11 @@ export class NotificationsController {
   }
 
   @Post()
-  create(@Body() createNotificationDto: CreateNotificationDto) {
-    return this.notificationsService.create(createNotificationDto);
+  @UseGuards(JwtAuthGuard)
+  create(@Req() req, @Body() createNotificationDto: CreateNotificationDto) {
+    // Ensure the notification is created for the authenticated user only
+    const userId = req.user?.id;
+    const payload = { ...createNotificationDto, userId };
+    return this.notificationsService.create(payload as CreateNotificationDto);
   }
 }

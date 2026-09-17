@@ -29,4 +29,14 @@ export class FeedScheduleEntity {
 
   @OneToMany(() => FeedingLogEntity, (log) => log.schedule)
   logs: FeedingLogEntity[];
+
+  // Sync metadata for device delivery
+  @Column({ name: 'last_synced_at', type: 'timestamptz', nullable: true })
+  lastSyncedAt?: Date;
+
+  @Column({ name: 'last_sync_status', type: 'varchar', length: 50, nullable: true })
+  lastSyncStatus?: string;
+
+  @Column({ name: 'sync_attempts', type: 'int', default: 0 })
+  syncAttempts?: number;
 }

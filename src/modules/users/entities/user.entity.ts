@@ -16,8 +16,11 @@ export class UserEntity {
   @Column({ name: 'password_hash', type: 'varchar', length: 255, nullable: true, select: false })
   passwordHash!: string | null;
 
-  @Column({ name: 'phone', type: 'varchar', length: 20, nullable: true })
+    @Column({ name: 'phone', type: 'varchar', length: 20, nullable: true })
   phone?: string;
+
+  @Column({ name: 'profile_image', type: 'varchar', length: 500, nullable: true })
+  profileImage?: string | null;
 
   @Column({ name: 'created_at', type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt!: Date;

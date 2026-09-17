@@ -77,9 +77,10 @@ export class UsersService {
     // parameter binding → 500 Internal Server Error. Use `update()` instead
     // so only the fields we actually want to change are sent to PostgreSQL.
     const partial: Partial<UserEntity> = {};
-    if (updateUserDto.fullName !== undefined) partial.fullName = updateUserDto.fullName;
+        if (updateUserDto.fullName !== undefined) partial.fullName = updateUserDto.fullName;
     if (updateUserDto.email !== undefined) partial.email = updateUserDto.email;
     if (updateUserDto.phone !== undefined) partial.phone = updateUserDto.phone;
+    if (updateUserDto.profileImage !== undefined) partial.profileImage = updateUserDto.profileImage;
     if (updateUserDto.password) partial.passwordHash = this.hashPassword(updateUserDto.password);
 
     const result = await this.usersRepository.update(id, partial);

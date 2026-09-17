@@ -17,7 +17,12 @@ import { OtpService } from './otp.service';
       // docker-compose.yml) so signing and verification never diverge.
       secret:
         process.env.JWT_SECRET || 'your-secret-key-change-this-in-production',
-      signOptions: { expiresIn: '24h' },
+      // Session length. docker-compose.yml sets JWT_EXPIRES_IN=7d: a 24h
+      // lifetime made every app session expire overnight, and the only
+      // symptom was a raw 401 on the next day's pond fetch.
+      signOptions: {
+        expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as any,
+      },
     }),
   ],
   controllers: [AuthController],

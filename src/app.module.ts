@@ -10,6 +10,7 @@ import { ModulesModule } from './modules/modules.module';
 import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { SensorsModule } from './modules/sensors/sensors.module';
+import { DevicesModule } from './modules/devices/device.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { SensorsModule } from './modules/sensors/sensors.module';
     UsersModule,
     AuthModule,
     PondsModule,
+    DevicesModule,
     CommonModule,
     ModulesModule,
     SensorsModule,

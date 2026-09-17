@@ -24,6 +24,10 @@ export class CreateSensorDataDto {
   @IsNumber()
   dissolvedOxygen?: number;
 
+  @IsOptional()
+  @IsNumber()
+  tds?: number;
+
   // --- FishCAP feeder telemetry (sent by the ESP32 on every reading) ---
   @IsOptional()
   @IsNumber()

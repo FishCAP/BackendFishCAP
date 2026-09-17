@@ -3,7 +3,6 @@ import {
   Controller,
   Delete,
   Get,
-  NotFoundException,
   Param,
   Patch,
   Post,
@@ -25,6 +24,11 @@ export class PondsController {
   async create(@Req() req, @Body() createPondDto: CreatePondDto) {
     // JwtStrategy.validate() returns { id, email } — use req.user.id consistently.
     const userId = req.user.id;
+    // If deviceId is provided, use the device-aware create method
+    if (createPondDto.deviceId) {
+      const result = await this.pondsService.createWithDevice(createPondDto, userId);
+      return { success: true, data: result };
+    }
     const pond = await this.pondsService.create(createPondDto, userId);
     return { success: true, data: pond };
   }
@@ -64,6 +68,19 @@ export class PondsController {
     const userId = req.user.id;
     const pond = await this.pondsService.update(id, updatePondDto, userId);
     return { success: true, data: pond };
+  }
+
+  /**
+   * Mark a pond as completed/done. This:
+   * 1. Sets pond status to 'done'
+   * 2. Releases the assigned hardware (device becomes AVAILABLE)
+   * 3. Preserves all historical data (sensor readings, feeding logs, schedules)
+   */
+  @Patch(':id/complete')
+  async completePond(@Req() req, @Param('id') id: string) {
+    const userId = req.user.id;
+    const result = await this.pondsService.completePond(id, userId);
+    return { success: true, data: result };
   }
 
   @Delete(':id')

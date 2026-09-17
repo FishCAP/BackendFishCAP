@@ -6,6 +6,7 @@ interface UserProfile {
   email: string;
   username: string;
   phoneNumber?: string;
+  profileImage?: string;
   createdAt: string;
 }
 

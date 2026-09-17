@@ -68,6 +68,16 @@ export class CreatePondDto {
   @IsNumber()
   amount?: number;
 
+  /**
+   * UUID of an available hardware device to assign to this pond.
+   * If provided, the device must have status AVAILABLE and no current pond assignment.
+   * This replaces the legacy hardwareId string with proper device lifecycle management.
+   */
+  @IsOptional()
+  @IsString()
+  deviceId?: string;
+
+  /** @deprecated Use deviceId instead */
   @IsOptional()
   @IsString()
   hardwareId?: string;

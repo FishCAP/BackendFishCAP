@@ -1,12 +1,15 @@
 // ponds.service.ts
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { EntityManager, In, Repository } from 'typeorm';
 import { PondEntity } from './entities/pond.entity/pond.entity';
 import { CreatePondDto } from './dto/create-pond.dto';
 import { UpdatePondDto } from './dto/update-pond.dto';
 import { SensorDataEntity } from '../sensors/entities/sensor-data.entity';
+import { DeviceEntity } from '../sensors/entities/device.entity';
 import { FeedScheduleEntity } from '../feeding/entities/feed-schedule.entity';
+import { FishSpeciesEntity } from '../feeding/entities/fish-species.entity';
+import { DeviceGateway } from '../devices/device.gateway';
 import { FeedingScheduleItemDto } from './dto/create-pond.dto';
 import { AddFeedScheduleDto } from './dto/add-feed-schedule.dto';
 
@@ -88,6 +91,11 @@ export class PondsService {
     private sensorDataRepository: Repository<SensorDataEntity>,
     @InjectRepository(FeedScheduleEntity)
     private feedSchedulesRepository: Repository<FeedScheduleEntity>,
+    @InjectRepository(FishSpeciesEntity)
+    private fishSpeciesRepository: Repository<FishSpeciesEntity>,
+    @InjectRepository(DeviceEntity)
+    private deviceRepository: Repository<DeviceEntity>,
+    @Optional() private deviceGateway?: DeviceGateway,
   ) {}
 
   /**
@@ -112,6 +120,13 @@ export class PondsService {
     if (v == null) return 'Unknown';
     if (v >= 25 && v <= 32) return 'Good';
     if (v >= 20 && v <= 35) return 'Moderate';
+    return 'Abnormal';
+  }
+
+  private static tdsStatus(v?: number | null): string {
+    if (v == null) return 'Unknown';
+    if (v >= 50 && v <= 500) return 'Good';
+    if (v >= 20 && v <= 1000) return 'Moderate';
     return 'Abnormal';
   }
 
@@ -148,6 +163,7 @@ export class PondsService {
     const oxygen = latest?.dissolvedOxygen != null ? Number(latest.dissolvedOxygen) : null;
     const pH = latest?.ph != null ? Number(latest.ph) : null;
     const temperature = latest?.temperature != null ? Number(latest.temperature) : null;
+    const tds = latest?.tds != null ? Number(latest.tds) : null;
     // HX711 load-cell telemetry (feed stock weight) sent by the ESP32.
     const weightGrams = latest?.weightGrams != null ? Number(latest.weightGrams) : null;
     const remainingStockGrams =
@@ -190,15 +206,57 @@ export class PondsService {
           status: 'Scheduled',
         }));
 
+    // Attempt to enrich with species-specific environment thresholds when
+    // a matching species exists in the fish_species table.
+    let temperatureStatus = PondsService.temperatureStatus(temperature);
+    let pHStatus = PondsService.phStatus(pH);
+    try {
+      if (pond.species) {
+        const allSpecies = await this.fishSpeciesRepository.find();
+        const normalized = (pond.species || '').toString().trim().toLowerCase();
+        const match = allSpecies.find((s) => {
+          if ((s.nameEn || '').toString().toLowerCase() === normalized) return true;
+          if ((s.nameKm || '').toString().toLowerCase() === normalized) return true;
+          if (Array.isArray(s.aliases) && s.aliases.map((a) => String(a).toLowerCase()).includes(normalized)) return true;
+          return false;
+        });
+        if (match && match.environment) {
+          const env = match.environment as any;
+          if (temperature != null && env.temperature) {
+            const tmin = env.temperature.min as number | undefined;
+            const tmax = env.temperature.max as number | undefined;
+            if (tmin != null && tmax != null) {
+              if (temperature >= tmin && temperature <= tmax) temperatureStatus = 'Good';
+              else if (temperature >= (tmin - 5) && temperature <= (tmax + 5)) temperatureStatus = 'Moderate';
+              else temperatureStatus = 'Abnormal';
+            }
+          }
+          if (pH != null && env.ph) {
+            const pmin = env.ph.min as number | undefined;
+            const pmax = env.ph.max as number | undefined;
+            if (pmin != null && pmax != null) {
+              if (pH >= pmin && pH <= pmax) pHStatus = 'Good';
+              else if (pH >= (pmin - 0.5) && pH <= (pmax + 0.5)) pHStatus = 'Moderate';
+              else pHStatus = 'Abnormal';
+            }
+          }
+        }
+      }
+    } catch (err) {
+      // Non-fatal: fallback to global thresholds above.
+    }
+
     return {
       ...pond,
       oxygen,
       oxygenStatus: PondsService.oxygenStatus(oxygen),
+      tds,
+      tdsStatus: PondsService.tdsStatus(tds),
       pH,
       ph: pH, // the list screen's Pond.fromJson reads the lowercase key
-      pHStatus: PondsService.phStatus(pH),
+      pHStatus,
       temperature: temperature != null ? temperature.toFixed(1) : pond.temperature,
-      temperatureStatus: PondsService.temperatureStatus(temperature),
+      temperatureStatus,
       fishCount: pond.estimatedCount ?? null,
       fishType: pond.species ?? null,
       stockingDuration,
@@ -249,6 +307,30 @@ export class PondsService {
       );
     if (rows.length) {
       await this.feedSchedulesRepository.save(rows);
+      // After persisting feed schedules, push them to all registered devices.
+      await this.pushSchedulesToDevices(pondId);
+    }
+  }
+
+  /**
+   * Push the pond's current feed schedules to every device registered for
+   * it (Socket.IO `schedule_update`). Best-effort: devices that are offline
+   * pick the schedule up via the GET /api/devices/:code/pending polling
+   * fallback instead.
+   */
+  private async pushSchedulesToDevices(pondId: string): Promise<void> {
+    try {
+      const devices = await this.deviceRepository.find({ where: { pond: { id: pondId } } });
+      const rows = await this.feedSchedulesRepository.find({ where: { pondId } });
+      const payload = rows
+        .filter((r) => r.isActive !== false)
+        .map((r) => ({ id: r.id, feedTime: r.feedTime, feedAmount: Number(r.feedAmount) }));
+      for (const dev of devices) {
+        if (!dev?.deviceCode) continue;
+        await this.deviceGateway?.sendScheduleToDevice(dev.deviceCode, { pondId, schedules: payload });
+      }
+    } catch (err) {
+      // Swallow: best-effort notify; fallback REST/polling covers offline devices.
     }
   }
 
@@ -286,6 +368,10 @@ export class PondsService {
         isActive: true,
       }),
     );
+    // Push the updated schedule list to the pond's devices immediately so
+    // the feeder servo follows the new time without waiting for its next
+    // polling cycle.
+    await this.pushSchedulesToDevices(pond.id);
     return this.toScheduleDto(row);
   }
 
@@ -357,8 +443,45 @@ export class PondsService {
     const pond = await this.findOwnedEntity(id, userId);
     const schedules = updatePondDto.feedingSchedules;
     const values = normalizePondPayload(updatePondDto);
+    const wasDone = (pond.status || 'active').toString().toLowerCase() === 'done';
     Object.assign(pond, values);
-    const saved = await this.pondsRepository.save(pond);
+
+    // "Mark as Done" from the app uses PATCH /ponds/:id { status: 'done' }.
+    // The canonical complete endpoint is PATCH /ponds/:id/complete, but ANY
+    // status transition to 'done' must release the bound hardware, otherwise
+    // the device keeps polling the finished pond's schedules (devices.pond_id
+    // is the only source of truth for GET /devices/:code/pending).
+    const isNowDone =
+      (pond.status || 'active').toString().toLowerCase() === 'done';
+    const releasesHardware = !wasDone && isNowDone;
+    if (releasesHardware && !pond.endDate) {
+      pond.endDate = new Date().toISOString().split('T')[0];
+    }
+
+    // Atomically save the pond and (when completing) release its device so a
+    // crash between the two writes can never leave a stranded binding.
+    let releasedDevices: DeviceEntity[] = [];
+    const saved = await this.pondsRepository.manager.transaction(
+      async (em) => {
+        const savedPond = await em.getRepository(PondEntity).save(pond);
+        if (releasesHardware) {
+          releasedDevices = await this.releaseDevicesForPond(em, savedPond.id);
+        }
+        return savedPond;
+      },
+    );
+
+    // Notify the released device(s) after the transaction committed.
+    if (releasedDevices.length > 0 && this.deviceGateway) {
+      for (const device of releasedDevices) {
+        this.deviceGateway.sendDeviceConfig(device.deviceCode, {
+          hardware_id: device.deviceCode,
+          pond_id: '',
+          status: 'AVAILABLE',
+        });
+      }
+    }
+
     // Only re-sync when the form actually sent the schedule array (an empty
     // array intentionally clears all rows).
     if (Array.isArray(schedules)) {
@@ -371,5 +494,120 @@ export class PondsService {
     // Ensure the pond exists AND belongs to this user before deleting.
     await this.findOwnedEntity(id, userId);
     await this.pondsRepository.delete(id);
+  }
+
+  /**
+   * Mark a pond as completed/done and release its hardware for reassignment.
+   *
+   * Steps:
+   * 1. Verify pond exists and belongs to user
+   * 2. In one transaction: set pond status to 'done' + stamp endDate + release
+   *    the assigned device (devices.pond_id = NULL, status AVAILABLE)
+   * 3. Preserve all historical data (sensor readings, feeding logs, schedules)
+   * 4. Notify the device over WS after the commit
+   *
+   * Returns the updated pond and device info.
+   */
+  async completePond(
+    id: string,
+    userId: string,
+  ): Promise<{ pond: PondEntity; device: DeviceEntity | null }> {
+    const pond = await this.findOwnedEntity(id, userId);
+
+    // Mark pond as done + release hardware atomically: devices.pond_id is the
+    // single source of truth for schedule polling, so it must never be left
+    // pointing at a finished pond if the pond write succeeds but the process
+    // dies before the device write (or vice versa).
+    const { savedPond, releasedDevices } =
+      await this.pondsRepository.manager.transaction(async (em) => {
+        pond.status = 'done';
+        pond.endDate = pond.endDate || new Date().toISOString().split('T')[0];
+        const saved = await em.getRepository(PondEntity).save(pond);
+        const devices = await this.releaseDevicesForPond(em, saved.id);
+        return { savedPond: saved, releasedDevices: devices };
+      });
+
+    // Notify the ESP32 that it has been released (after commit).
+    const releasedDevice = releasedDevices[0] ?? null;
+    if (releasedDevice) {
+      const deviceCode = releasedDevice.deviceCode;
+      if (this.deviceGateway) {
+        this.deviceGateway.sendDeviceConfig(deviceCode, {
+          hardware_id: deviceCode,
+          pond_id: '',
+          status: 'AVAILABLE',
+        });
+      }
+    }
+
+    return { pond: savedPond, device: releasedDevice };
+  }
+
+  /**
+   * Release every device currently bound to a pond inside the caller's
+   * transaction: clears devices.pond_id (the schedule-polling source of truth)
+   * and marks the hardware AVAILABLE for reassignment. Returns the released
+   * devices (empty when the pond had none).
+   */
+  private async releaseDevicesForPond(
+    em: EntityManager,
+    pondId: string,
+  ): Promise<DeviceEntity[]> {
+    const deviceRepo = em.getRepository(DeviceEntity);
+    const devices = await deviceRepo.find({ where: { pondId } });
+    for (const device of devices) {
+      // Targeted update(): clear devices.pond_id (the schedule-polling
+      // source of truth) explicitly instead of save()-diffing, so the write
+      // can never be optimized away.
+      await deviceRepo.update(device.id, {
+        pondId: null,
+        status: 'AVAILABLE',
+        releasedAt: new Date(),
+      });
+    }
+    return devices;
+  }
+
+  /**
+   * Create a new pond and optionally assign an available device to it.
+   * Overrides the base create method to handle device assignment.
+   */
+  async createWithDevice(
+    createPondDto: CreatePondDto,
+    userId: string,
+  ): Promise<{ pond: PondEntity; device: DeviceEntity | null }> {
+    const pond = await this.create(createPondDto, userId);
+
+    let assignedDevice: DeviceEntity | null = null;
+    if (createPondDto.deviceId) {
+      // Find the device by its ID (UUID) and validate it's available
+      const device = await this.deviceRepository.findOne({
+        where: { id: createPondDto.deviceId },
+      });
+      if (!device) {
+        throw new NotFoundException(`Device ${createPondDto.deviceId} not found`);
+      }
+      if (device.status !== 'AVAILABLE' || device.pondId !== null) {
+        throw new ConflictException(
+          `Device ${device.deviceCode} is currently assigned to another pond and cannot be reassigned until the previous pond is completed.`,
+        );
+      }
+      // Assign device to pond
+      device.pondId = pond.id;
+      device.status = 'ASSIGNED';
+      device.assignedAt = new Date();
+      assignedDevice = await this.deviceRepository.save(device);
+
+      // Push new configuration to the ESP32
+      if (this.deviceGateway) {
+        this.deviceGateway.sendDeviceConfig(device.deviceCode, {
+          hardware_id: device.deviceCode,
+          pond_id: pond.id,
+          status: 'ACTIVE',
+        });
+      }
+    }
+
+    return { pond, device: assignedDevice };
   }
 }

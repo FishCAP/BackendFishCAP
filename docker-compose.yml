@@ -35,10 +35,17 @@ services:
       # here. It must equal the JWT_SECRET used anywhere else (local dev .env,
       # jwt.strategy.ts fallback) or previously issued tokens will 401 forever.
       JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-this-in-production}
-      JWT_EXPIRES_IN: 24h
+      # Session token lifetime (read by auth.module.ts). 7d so an app session
+      # survives normal use; re-login is only needed after a secret change,
+      # an image redeploy that changed the secret, or manual logout.
+      JWT_EXPIRES_IN: 7d
+      # main.ts listens on PORT (default 3001). Expose that same port inside the
+      # container and map host:3001 -> container:3001 so the Flutter client
+      # (which connects to :3001) reaches the gateway's /ws endpoint.
+      PORT: "3001"
 
     ports:
-      - "3001:3000"
+      - "3001:3001"
 
 volumes:
   postgres_data:

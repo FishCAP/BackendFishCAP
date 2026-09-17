@@ -17,7 +17,7 @@ export class NotificationsService {
     return this.notificationsRepository.save(notification);
   }
 
-    async findAll(userId?: string): Promise<NotificationEntity[]> {
+  async findAll(userId?: string): Promise<NotificationEntity[]> {
     const where = userId ? { user: { id: userId } } : {};
     const notes = await this.notificationsRepository.find({
       where,
@@ -59,7 +59,15 @@ export class NotificationsService {
     return { updated: result.affected ?? 0 };
   }
 
-    async update(id: string, updateNotificationDto: UpdateNotificationDto, userId?: string): Promise<NotificationEntity> {
+  /** Most recent notification with the given title for a user (used to throttle reminders). */
+  async findLatestByTitle(userId: string, title: string): Promise<NotificationEntity | null> {
+    return this.notificationsRepository.findOne({
+      where: { user: { id: userId }, title },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async update(id: string, updateNotificationDto: UpdateNotificationDto, userId?: string): Promise<NotificationEntity> {
     const notification = await this.findOne(id, userId);
     const updated = { ...notification, ...updateNotificationDto };
     await this.notificationsRepository.save(updated);

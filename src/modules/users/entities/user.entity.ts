@@ -30,4 +30,11 @@ export class UserEntity {
 
   @OneToMany(() => NotificationEntity, (notification) => notification.user)
   notifications!: NotificationEntity[];
+
+  @Column({ type: 'varchar', nullable: true })
+  resetTokenHash?: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  resetTokenExpiresAt?: Date | null;
+  password: any;
 }

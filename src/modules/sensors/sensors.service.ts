@@ -7,13 +7,14 @@ import {
   Optional,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In, DataSource } from 'typeorm';
 import { DeviceEntity } from './entities/device.entity';
 import { SensorDataEntity } from './entities/sensor-data.entity';
 import { CreateDeviceDto } from './dto/create-device.dto';
 import { CreateSensorDataDto } from './dto/create-sensor-data.dto';
 import { DeviceGateway } from '../devices/device.gateway';
 import { NotificationsService } from '../notifications/notifications.service';
+import { PondEntity } from '../ponds/entities/pond.entity/pond.entity';
 
 @Injectable()
 export class SensorsService {
@@ -22,8 +23,11 @@ export class SensorsService {
     private readonly deviceRepository: Repository<DeviceEntity>,
     @InjectRepository(SensorDataEntity)
     private readonly sensorDataRepository: Repository<SensorDataEntity>,
+    @InjectRepository(PondEntity)
+    private readonly pondRepository: Repository<PondEntity>,
     @Optional() private readonly notificationsService?: NotificationsService,
     @Optional() private deviceGateway?: DeviceGateway,
+    @Optional() private dataSource?: DataSource,
   ) {}
 
   async createDevice(createDeviceDto: CreateDeviceDto): Promise<DeviceEntity> {
@@ -154,6 +158,13 @@ export class SensorsService {
         `temp=${dto.temperature ?? 'null'} do=${dto.dissolvedOxygen ?? 'null'} ` +
         `lowStock=${dto.lowStock ?? 'null'} feeding=${dto.feeding ?? 'null'}`,
     );
+
+    // Look up the device's current pond assignment early so we can update
+    // the hasAlert flag if needed.
+    const device = await this.deviceRepository.findOne({
+      where: { deviceCode },
+    });
+    const currentPondId = device?.pondId ?? null;
 
     const lowStock = dto.lowStock === true || (dto.lowStock as unknown) === 'true';
     const feeding = dto.feeding === true;
@@ -335,6 +346,7 @@ export class SensorsService {
     }
 
     // ── Persist + push each pending note ──
+    let hasActiveAlert = false;
     for (const note of notes) {
       try {
         const created = await this.notificationsService.create({
@@ -360,10 +372,29 @@ export class SensorsService {
           message: note.message,
           createdAt: created?.createdAt ?? new Date().toISOString(),
         });
+
+        // Track that we have at least one active alert
+        hasActiveAlert = true;
       } catch (err) {
         // One failing notification must not block the others.
         this.logger.error(
           `[ALERTS] Failed to create "${note.title}" for user ${userId}: ${(err as Error).message}`,
+        );
+      }
+    }
+
+    // Update pond's hasAlert flag based on whether we have active alerts
+    if (currentPondId && hasActiveAlert) {
+      try {
+        await this.pondRepository.update(currentPondId, {
+          hasAlert: true,
+        });
+        this.logger.log(
+          `[ALERTS] Set hasAlert=true for pond ${currentPondId}`,
+        );
+      } catch (err) {
+        this.logger.error(
+          `[ALERTS] Failed to update pond hasAlert flag: ${(err as Error).message}`,
         );
       }
     }

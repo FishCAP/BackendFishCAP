@@ -6,6 +6,7 @@ import { AuthService } from './auth.service';
 import { UsersModule } from '../users/users.module';
 import { UserEntity } from '../users/entities/user.entity';
 import { OtpEntity } from './entities/otp.entity';
+import { MailService } from '../mail/mail.service';
 import { OtpService } from './otp.service';
 
 @Module({
@@ -26,7 +27,7 @@ import { OtpService } from './otp.service';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, OtpService],
+  providers: [AuthService, OtpService, MailService],
   exports: [AuthService],
 })
 export class AuthModule {}

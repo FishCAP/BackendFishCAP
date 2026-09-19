@@ -43,6 +43,11 @@ services:
       # container and map host:3001 -> container:3001 so the Flutter client
       # (which connects to :3001) reaches the gateway's /ws endpoint.
       PORT: "3001"
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-no-reply@fishcap.app}
 
     ports:
       - "3001:3001"

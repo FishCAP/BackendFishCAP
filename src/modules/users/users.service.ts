@@ -10,9 +10,6 @@ export type UserResponse = Omit<UserEntity, 'passwordHash'>;
 
 @Injectable()
 export class UsersService {
-  save(user: UserEntity) {
-    throw new Error('Method not implemented.');
-  }
   constructor(
     @InjectRepository(UserEntity)
     private readonly usersRepository: Repository<UserEntity>,

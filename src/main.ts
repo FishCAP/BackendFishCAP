@@ -29,10 +29,10 @@ async function bootstrap() {
     }),
   );
 
-  const port = Number(process.env.PORT ?? 3001);
-  // Bind to 0.0.0.0 so Android emulator and external devices can reach the server.
-  // The app is configured to connect to port 3001, so the server must honor the
-  // same port instead of ignoring the environment variable.
+  // Parse environment PORT explicitly or fall back to 10000/3001
+  const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 10000;
+
   await app.listen(port, '0.0.0.0');
+  console.log(`Application is running on port ${port}`);
 }
 bootstrap();

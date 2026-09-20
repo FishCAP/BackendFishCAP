@@ -21,10 +21,25 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
           };
         }
 
+        const host = configService.get<string>('DATABASE_HOST');
+
+        // Fail fast with an actionable message instead of silently falling
+        // back to localhost, which shows up on Render as
+        // "AggregateError [ECONNREFUSED]" (nothing is listening on 127.0.0.1).
+        if (!host) {
+          throw new Error(
+            'Database is not configured. Set DATABASE_URL in your Render ' +
+              'environment variables (recommended), or set all of ' +
+              'DATABASE_HOST / DATABASE_USER / DATABASE_PASSWORD / DATABASE_NAME. ' +
+              'Note: the .env file is NOT deployed (it is in .dockerignore and ' +
+              '.gitignore), so variables must be defined in the Render dashboard.',
+          );
+        }
+
         // If you set individual environment variables on Render
         return {
           type: 'postgres',
-          host: configService.get<string>('DATABASE_HOST'),
+          host,
           port: configService.get<number>('DATABASE_PORT', 5432),
           username: configService.get<string>('DATABASE_USER'),
           password: configService.get<string>('DATABASE_PASSWORD'),

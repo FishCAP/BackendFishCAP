@@ -10,13 +10,20 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       useFactory: (configService: ConfigService) => {
         const databaseUrl = configService.get<string>('DATABASE_URL');
 
+        // Schema auto-sync is opt-in (DB_SYNCHRONIZE=true) for a one-shot
+        // bootstrap of a FRESH database from the TypeORM entities. It must
+        // stay unset/false in production (Render, docker-compose) so the
+        // schema only ever changes deliberately.
+        const synchronize =
+          configService.get<string>('DB_SYNCHRONIZE') === 'true';
+
         // If you set DATABASE_URL on Render
         if (databaseUrl) {
           return {
             type: 'postgres',
             url: databaseUrl,
             autoLoadEntities: true,
-            synchronize: false,
+            synchronize,
             ssl: { rejectUnauthorized: false },
           };
         }
@@ -45,7 +52,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
           password: configService.get<string>('DATABASE_PASSWORD'),
           database: configService.get<string>('DATABASE_NAME'),
           autoLoadEntities: true,
-          synchronize: false,
+          synchronize,
           ssl: { rejectUnauthorized: false },
         };
       },

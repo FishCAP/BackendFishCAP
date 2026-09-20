@@ -2,12 +2,17 @@
 import { Injectable } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 
+// Number('') is 0 and Number(undefined) is NaN — both must fall back to the
+// 587 STARTTLS default. An empty SMTP_PORT on Render previously produced
+// port 0, which silently made every SMTP connection fail.
+const SMTP_PORT = Number(process.env.SMTP_PORT) || 587;
+
 @Injectable()
 export class MailService {
   private transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT ?? 587),
-    secure: Number(process.env.SMTP_PORT ?? 587) === 465,
+    port: SMTP_PORT,
+    secure: SMTP_PORT === 465,
     connectionTimeout: 10000,
     greetingTimeout: 10000,
     socketTimeout: 10000,

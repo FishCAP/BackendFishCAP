@@ -9,6 +9,7 @@ import {
   NotFoundException,
   Res,
   Req,
+  Logger,
 } from '@nestjs/common';
 import { ServiceUnavailableException } from '@nestjs/common';
 import { MailService } from '../mail/mail.service';
@@ -20,6 +21,8 @@ import { ForgotPasswordDto } from './dto/forget-password.dto';
 
 @Controller('auth')
 export class AuthController {
+  private readonly logger = new Logger(AuthController.name);
+
   constructor(
     private readonly authService: AuthService,
     private readonly otpService: OtpService,
@@ -64,7 +67,15 @@ export class AuthController {
     const otp = await this.otpService.createOtp(email);
     try {
       await this.mailService.sendVerificationCode(email, otp.code);
-    } catch (_) {
+    } catch (error) {
+      // Log the real cause (missing SMTP_HOST vs. auth failure vs. timeout)
+      // so the Render Logs tab pinpoints the misconfiguration; the client
+      // only sees the generic 503.
+      this.logger.error(
+        `request-otp: could not send verification email to ${email}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
       throw new ServiceUnavailableException('Could not send verification email. Please try again later.');
     }
     return {

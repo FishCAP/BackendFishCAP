@@ -17,7 +17,9 @@ export class FeedingLogEntity {
   @Column({ name: 'schedule_id', type: 'uuid', nullable: true })
   scheduleId: string;
 
-  @ManyToOne(() => FeedScheduleEntity, (schedule) => schedule.logs)
+  @ManyToOne(() => FeedScheduleEntity, (schedule) => schedule.logs, {
+    onDelete: 'SET NULL',
+  })
   @JoinColumn({ name: 'schedule_id' })
   schedule: FeedScheduleEntity;
 

@@ -84,6 +84,7 @@ CREATE TABLE feeding_logs (
     CONSTRAINT fk_log_schedule
     FOREIGN KEY(schedule_id)
     REFERENCES feed_schedules(id)
+    ON DELETE SET NULL
 );
 
 CREATE TABLE sensor_data (

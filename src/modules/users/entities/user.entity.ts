@@ -22,6 +22,10 @@ export class UserEntity {
   @Column({ name: 'profile_image', type: 'varchar', length: 500, nullable: true })
   profileImage?: string | null;
 
+  /** Cloudinary public_id of the current profile image (for replacement). */
+  @Column({ name: 'profile_image_public_id', type: 'varchar', length: 255, nullable: true })
+  profileImagePublicId?: string | null;
+
   @Column({ name: 'created_at', type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt!: Date;
 

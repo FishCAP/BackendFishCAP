@@ -5,6 +5,7 @@ import { createHash } from 'crypto';
 import { UserEntity } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { CloudinaryService } from './cloudinary.provider';
 
 export type UserResponse = Omit<UserEntity, 'passwordHash'>;
 
@@ -13,6 +14,7 @@ export class UsersService {
   constructor(
     @InjectRepository(UserEntity)
     private readonly usersRepository: Repository<UserEntity>,
+    private readonly cloudinaryService: CloudinaryService,
   ) {}
 
   private hashPassword(password: string): string {
@@ -100,6 +102,52 @@ export class UsersService {
     if (result.affected === 0) {
       throw new NotFoundException('User not found');
     }
+  }
+
+  /**
+   * Upload a user's profile image to Cloudinary and persist the URL.
+   *
+   * Flow: upload to Cloudinary (`fishcap/profile-images`) → save the returned
+   * `secure_url` + `public_id` in PostgreSQL → only then delete the user's
+   * previous Cloudinary image, so a failed upload never orphans the account
+   * without a picture.
+   */
+  async setProfileImage(
+    userId: string,
+    file: Express.Multer.File,
+  ): Promise<UserResponse> {
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const { secureUrl, publicId } = await this.cloudinaryService.uploadImage(
+      file.buffer,
+      file.mimetype,
+    );
+
+    // Remember the previous public_id, then persist the new image.
+    const previousPublicId = user.profileImagePublicId;
+    await this.usersRepository.update(userId, {
+      profileImage: secureUrl,
+      profileImagePublicId: publicId,
+    });
+
+    // Best-effort cleanup of the replaced Cloudinary asset. Never fail the
+    // request because the old image could not be deleted.
+    if (previousPublicId) {
+      this.cloudinaryService
+        .deleteImage(previousPublicId)
+        .catch((err) =>
+          console.error('Failed to delete previous profile image:', err),
+        );
+    }
+
+    const updated = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!updated) {
+      throw new NotFoundException('User not found');
+    }
+    return this.sanitizeUser(updated);
   }
 
   async validateCredentials(email: string, password: string): Promise<UserResponse | null> {

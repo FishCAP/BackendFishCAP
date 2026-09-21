@@ -1,15 +1,83 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, HttpCode, HttpStatus, NotFoundException, UseGuards, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, HttpCode, HttpStatus, NotFoundException, UseGuards, Req, UploadedFile, UseInterceptors, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import * as multer from 'multer';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import {
+  CloudinaryService,
+  PROFILE_IMAGE_MAX_BYTES,
+  PROFILE_IMAGE_MIME_TYPES,
+} from './cloudinary.provider';
 
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
+
+  /**
+   * POST /api/users/:id/profile-image (or /api/users/me/profile-image)
+   *
+   * Multipart upload of the user's profile picture. The file is streamed into
+   * memory by multer, validated, uploaded to Cloudinary by the backend, and
+   * the returned secure URL is persisted in users.profile_image. The Flutter
+   * app never talks to Cloudinary directly.
+   */
+  @Post(['me/profile-image', ':id/profile-image'])
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: multer.memoryStorage(),
+      limits: { fileSize: PROFILE_IMAGE_MAX_BYTES },
+      fileFilter: (_req, file, callback) => {
+        if (PROFILE_IMAGE_MIME_TYPES.includes(file.mimetype)) {
+          callback(null, true);
+        } else {
+          callback(
+            new BadRequestException(
+              'Invalid image. Allowed formats: jpg, jpeg, png, webp.',
+            ),
+            false,
+          );
+        }
+      },
+    }),
+  )
+  async uploadProfileImage(
+    @Req() req,
+    @Param('id') id: string,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    // `me` is an alias for the authenticated user's own id.
+    const targetUserId = !id || id === 'me' ? req.user.id : id;
+    if (targetUserId !== req.user.id) {
+      throw new ForbiddenException('You can only update your own profile image');
+    }
+
+    if (!file) {
+      throw new BadRequestException('No file uploaded. Field name must be "file".');
+    }
+
+    if (!this.cloudinaryService.isConfigured()) {
+      throw new BadRequestException(
+        'Image upload is not configured on the server (missing Cloudinary credentials).',
+      );
+    }
+
+    const updated = await this.usersService.setProfileImage(targetUserId, file);
+
+    return {
+      message: 'Profile image uploaded successfully',
+      profile_image: updated.profileImage,
+      data: updated,
+    };
+  }
 
   @Post()
   create(@Body() createUserDto: CreateUserDto) {

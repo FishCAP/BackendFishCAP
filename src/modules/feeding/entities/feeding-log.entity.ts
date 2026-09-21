@@ -15,7 +15,7 @@ export class FeedingLogEntity {
   pond: PondEntity;
 
   @Column({ name: 'schedule_id', type: 'uuid', nullable: true })
-  scheduleId: string;
+  scheduleId: string | null;
 
   @ManyToOne(() => FeedScheduleEntity, (schedule) => schedule.logs, {
     onDelete: 'SET NULL',

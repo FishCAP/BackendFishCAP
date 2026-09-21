@@ -8,6 +8,7 @@ import { UpdatePondDto } from './dto/update-pond.dto';
 import { SensorDataEntity } from '../sensors/entities/sensor-data.entity';
 import { DeviceEntity } from '../sensors/entities/device.entity';
 import { FeedScheduleEntity } from '../feeding/entities/feed-schedule.entity';
+import { FeedingLogEntity } from '../feeding/entities/feeding-log.entity';
 import { FishSpeciesEntity } from '../feeding/entities/fish-species.entity';
 import { DeviceGateway } from '../devices/device.gateway';
 import { FeedingScheduleItemDto } from './dto/create-pond.dto';
@@ -91,6 +92,8 @@ export class PondsService {
     private sensorDataRepository: Repository<SensorDataEntity>,
     @InjectRepository(FeedScheduleEntity)
     private feedSchedulesRepository: Repository<FeedScheduleEntity>,
+    @InjectRepository(FeedingLogEntity)
+    private feedingLogsRepository: Repository<FeedingLogEntity>,
     @InjectRepository(FishSpeciesEntity)
     private fishSpeciesRepository: Repository<FishSpeciesEntity>,
     @InjectRepository(DeviceEntity)
@@ -294,6 +297,22 @@ export class PondsService {
     pondId: string,
     items: FeedingScheduleItemDto[],
   ): Promise<void> {
+    // Detach historical feeding logs from the schedules that are about to be
+    // deleted. Production databases may still carry the legacy FK constraint
+    // (NO ACTION) on feeding_logs.schedule_id, which makes the plain delete
+    // below fail with:
+    //   "update or delete on table feed_schedules violates foreign key
+    //    constraint FK_... on table feeding_logs"
+    // Setting schedule_id to NULL first preserves the logs (they keep their
+    // pond_id/feed_amount/status history) and makes this work on databases
+    // that have not had the ON DELETE SET NULL migration applied yet.
+    await this.feedingLogsRepository
+      .createQueryBuilder()
+      .update(FeedingLogEntity)
+      .set({ scheduleId: null })
+      .where('pond_id = :pondId', { pondId })
+      .execute();
+
     await this.feedSchedulesRepository.delete({ pondId });
     const rows = (items ?? [])
       .filter((item) => typeof item.time === 'string' && item.time.trim().length > 0)

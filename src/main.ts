@@ -1,11 +1,17 @@
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { json, urlencoded } from 'body-parser';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common/pipes/validation.pipe';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create< NestExpressApplication>(AppModule);
+  // Increase body parser limits for multipart image uploads (avoids
+  // "request entity too large" on PATCH /api/users/me, etc.)
+  app.use(json({ limit: '15mb' }));
+  app.use(urlencoded({ limit: '15mb', extended: true }));
 
     // Serve uploaded files (e.g. profile images) statically
   (app as any).useStaticAssets('uploads', { prefix: '/uploads/' });

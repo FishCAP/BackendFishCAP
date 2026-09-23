@@ -40,6 +40,37 @@ function formatTime12(value: string): string {
 }
 
 /**
+ * Rejects a future "baby fish start date".
+ *
+ * Cambodia is UTC+7, so "today" is derived by shifting the UTC clock +7h —
+ * comparing raw UTC dates would accept/reject the wrong day between
+ * 17:00–24:00 Cambodia time. The stored value is a plain calendar date
+ * ("yyyy-MM-dd") that is never converted to a localised timestamp.
+ */
+function assertNotFutureDate(
+  startDate: unknown,
+  field = 'startDate',
+): void {
+  if (typeof startDate !== 'string' || startDate.trim().length === 0) return;
+  const parsed = new Date(`${startDate.trim()}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) return; // let DB/format checks handle it
+  const nowCambodia = new Date(Date.now() + 7 * 3_600_000);
+  const todayUtcDays = Math.floor(
+    Date.UTC(
+      nowCambodia.getUTCFullYear(),
+      nowCambodia.getUTCMonth(),
+      nowCambodia.getUTCDate(),
+    ) / 86_400_000,
+  );
+  const startUtcDays = Math.floor(parsed.getTime() / 86_400_000);
+  if (startUtcDays > todayUtcDays) {
+    throw new BadRequestException(
+      `${field} cannot be in the future — baby fish cannot be stocked on a date that has not happened yet`,
+    );
+  }
+}
+
+/**
  * The Flutter app sends a structured `feedingSchedules` array
  * ([{ time, amount }]) alongside (or instead of) the plain
  * `feedingTimes` list.  The database stores the plain times plus the total
@@ -173,15 +204,25 @@ export class PondsService {
       latest?.remainingStockGrams != null ? Number(latest.remainingStockGrams) : null;
 
     // Stocking duration = whole days since start_date, when parsable.
+    // Cambodia is UTC+7 with no DST, so we shift the UTC clock by +7h before
+    // extracting the calendar date — otherwise an early-morning UTC timestamp
+    // (still "yesterday" in Cambodia) makes the age one day too large/small.
     let stockingDuration: string | null = null;
+    let stockingDays: number | null = null;
     if (pond.startDate) {
-      const start = new Date(pond.startDate);
+      const start = new Date(`${pond.startDate}T00:00:00Z`);
       if (!Number.isNaN(start.getTime())) {
-        const days = Math.max(
-          0,
-          Math.floor((Date.now() - start.getTime()) / 86_400_000),
+        const nowCambodia = new Date(Date.now() + 7 * 3_600_000);
+        const startUtcDays = Math.floor(start.getTime() / 86_400_000);
+        const nowUtcDays = Math.floor(
+          Date.UTC(
+            nowCambodia.getUTCFullYear(),
+            nowCambodia.getUTCMonth(),
+            nowCambodia.getUTCDate(),
+          ) / 86_400_000,
         );
-        stockingDuration = `${days} days`;
+        stockingDays = Math.max(0, nowUtcDays - startUtcDays);
+        stockingDuration = `${stockingDays} days`;
       }
     }
 
@@ -263,6 +304,7 @@ export class PondsService {
       fishCount: pond.estimatedCount ?? null,
       fishType: pond.species ?? null,
       stockingDuration,
+      stockingDays,
       expectedHarvest: pond.endDate ?? null,
       // Live feed-stock weight from the load cell + low-stock flag so the
       // Flutter dashboard can render the sensor section.
@@ -420,6 +462,7 @@ export class PondsService {
     createPondDto: CreatePondDto,
     userId: string,
   ): Promise<PondEntity> {
+    assertNotFutureDate(createPondDto.startDate);
     const schedules = createPondDto.feedingSchedules;
     const values = normalizePondPayload(createPondDto);
     const pond = this.pondsRepository.create({
@@ -460,6 +503,7 @@ export class PondsService {
     userId: string,
   ): Promise<PondEntity> {
     const pond = await this.findOwnedEntity(id, userId);
+    assertNotFutureDate(updatePondDto.startDate);
     const schedules = updatePondDto.feedingSchedules;
     const values = normalizePondPayload(updatePondDto);
     const wasDone = (pond.status || 'active').toString().toLowerCase() === 'done';

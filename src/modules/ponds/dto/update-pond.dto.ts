@@ -6,6 +6,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Matches,
   ValidateNested,
 } from 'class-validator';
 import { FeedingScheduleItemDto } from './create-pond.dto';
@@ -29,6 +30,9 @@ export class UpdatePondDto {
 
   @IsOptional()
   @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, {
+    message: 'startDate must be a date in yyyy-MM-dd format',
+  })
   startDate?: string;
 
   @IsOptional()

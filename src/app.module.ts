@@ -23,6 +23,7 @@ import { DevicesModule } from './modules/devices/device.module';
     CommonModule,
     ModulesModule,
     SensorsModule,
+    
   ],
   controllers: [AppController],
   providers: [AppService],

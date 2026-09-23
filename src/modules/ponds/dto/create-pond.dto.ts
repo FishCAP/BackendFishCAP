@@ -7,6 +7,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Matches,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -45,6 +46,9 @@ export class CreatePondDto {
 
   @IsOptional()
   @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, {
+    message: 'startDate must be a date in yyyy-MM-dd format',
+  })
   startDate?: string;
 
   @IsOptional()

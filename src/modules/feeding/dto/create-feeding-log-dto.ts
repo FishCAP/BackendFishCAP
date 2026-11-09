@@ -77,4 +77,6 @@ export class CreateFeedingLogFromDeviceDto {
   @IsOptional()
   @IsNumber()
   fedAt?: number;
+
+
 }

@@ -74,20 +74,37 @@ export class FeedingService {
     return log;
   }
 
-  /** Return feeding logs grouped by date (dd-MM-yyyy). Optional pondId filters rows. */
+                      
+  /** Return feeding logs grouped by date (dd-MM-yyyy, device timezone UTC+7). */
   async getLogsGrouped(pondId?: string): Promise<Record<string, any>> {
     const where = pondId ? { pondId } : {};
-    const rows = await this.feedingLogRepository.find({ where, order: { fedAt: 'DESC' } });
+    const rows = await this.feedingLogRepository.find({
+      where,
+      order: { fedAt: 'DESC' },
+    });
+
     const grouped: Record<string, any[]> = {};
     for (const r of rows) {
       const dt = r.fedAt instanceof Date ? r.fedAt : new Date(r.fedAt);
-      const key = `${String(dt.getDate()).padStart(2, '0')}-${String(dt.getMonth() + 1).padStart(2, '0')}-${dt.getFullYear()}`;
+
+      // Bucket by the device's local day (UTC+7), not the server's.
+      const local = new Date(dt.getTime() + 7 * 3600 * 1000);
+      const key =
+        `${String(local.getUTCDate()).padStart(2, '0')}-` +
+        `${String(local.getUTCMonth() + 1).padStart(2, '0')}-` +
+        `${local.getUTCFullYear()}`;
+
       grouped[key] = grouped[key] || [];
       grouped[key].push({
         id: r.id,
         pondId: r.pondId,
         scheduleId: r.scheduleId,
-        feedAmount: Number(r.feedAmount || 0),
+        feedAmount: Number(r.feedAmount || 0),      // kg, per the controller fix
+        status: (r as any).status ?? 'UNKNOWN',
+        targetFeedKg: (r as any).targetFeedKg ?? null,
+        actualDispensedKg: (r as any).actualDispensedKg ?? null,
+        remainingFeedKg: (r as any).remainingFeedKg ?? null,
+        failureReason: (r as any).failureReason ?? null,
         fedAt: r.fedAt,
       });
     }

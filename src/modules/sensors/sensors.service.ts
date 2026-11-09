@@ -107,7 +107,9 @@ export class SensorsService {
     });
 
     if (!device) {
-      this.logger.warn(`[ALERTS] No device row with deviceCode="${deviceCode}"`);
+      this.logger.warn(
+        `[ALERTS] No device row with deviceCode="${deviceCode}"`,
+      );
       return null;
     }
     if (!device.pondId) {
@@ -166,11 +168,14 @@ export class SensorsService {
     });
     const currentPondId = device?.pondId ?? null;
 
-    const lowStock = dto.lowStock === true || (dto.lowStock as unknown) === 'true';
+    const lowStock =
+      dto.lowStock === true || (dto.lowStock as unknown) === 'true';
     const feeding = dto.feeding === true;
 
     const temperature =
-      savedReading.temperature != null ? Number(savedReading.temperature) : null;
+      savedReading.temperature != null
+        ? Number(savedReading.temperature)
+        : null;
     const temperatureAlert =
       temperature != null &&
       (temperature < SensorsService.TEMP_ALERT_MIN ||
@@ -179,7 +184,9 @@ export class SensorsService {
     // Postgres decimal columns come back as strings — coerce explicitly.
     const ph = savedReading.ph != null ? Number(savedReading.ph) : null;
     const dissolvedOxygen =
-      savedReading.dissolvedOxygen != null ? Number(savedReading.dissolvedOxygen) : null;
+      savedReading.dissolvedOxygen != null
+        ? Number(savedReading.dissolvedOxygen)
+        : null;
 
     // TDS: a disconnected probe reads 0. Never alert on that.
     const tdsRaw = savedReading.tds != null ? Number(savedReading.tds) : null;
@@ -192,7 +199,8 @@ export class SensorsService {
       dissolvedOxygen != null && dissolvedOxygen < SensorsService.DO_ALERT_MIN;
     const tdsAlert =
       tds != null &&
-      (tds < SensorsService.TDS_ALERT_MIN || tds > SensorsService.TDS_ALERT_MAX);
+      (tds < SensorsService.TDS_ALERT_MIN ||
+        tds > SensorsService.TDS_ALERT_MAX);
 
     if (
       !lowStock &&
@@ -317,7 +325,8 @@ export class SensorsService {
         !prevAlert,
       );
       if (shouldNotify) {
-        const kind = tds < SensorsService.TDS_ALERT_MIN ? 'too low' : 'too high';
+        const kind =
+          tds < SensorsService.TDS_ALERT_MIN ? 'too low' : 'too high';
         notes.push({
           title: 'Water TDS alert',
           message:
@@ -350,9 +359,7 @@ export class SensorsService {
     for (const note of notes) {
       try {
         const created = await this.notificationsService.create({
-          // `user: { id }` matches what NotificationsService.findAll() queries.
-          // Passing a bare `userId` only works if the entity exposes a raw
-          // userId column — which it may not.
+          // Keep the notification attached to its owner through the relation.
           user: { id: userId } as any,
           title: note.title,
           message: note.message,
@@ -389,9 +396,7 @@ export class SensorsService {
         await this.pondRepository.update(currentPondId, {
           hasAlert: true,
         });
-        this.logger.log(
-          `[ALERTS] Set hasAlert=true for pond ${currentPondId}`,
-        );
+        this.logger.log(`[ALERTS] Set hasAlert=true for pond ${currentPondId}`);
       } catch (err) {
         this.logger.error(
           `[ALERTS] Failed to update pond hasAlert flag: ${(err as Error).message}`,
@@ -411,9 +416,10 @@ export class SensorsService {
     isTransition: boolean,
   ): Promise<boolean> {
     if (isTransition) return true;
-    const last = await this.notificationsService!
-      .findLatestByTitle(userId, title)
-      .catch(() => null);
+    const last = await this.notificationsService!.findLatestByTitle(
+      userId,
+      title,
+    ).catch(() => null);
     return (
       !last ||
       Date.now() - new Date(last.createdAt).getTime() >=

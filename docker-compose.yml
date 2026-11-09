@@ -31,6 +31,7 @@ services:
       DATABASE_USERNAME: fishcap_user
       DATABASE_PASSWORD: fishcap123
       DATABASE_NAME: fishcap_db
+      DATABASE_SSL: "false"
       # The runtime image has no .env file, so the JWT secret MUST be injected
       # here. It must equal the JWT_SECRET used anywhere else (local dev .env,
       # jwt.strategy.ts fallback) or previously issued tokens will 401 forever.
@@ -48,9 +49,14 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
       SMTP_FROM: ${SMTP_FROM:-no-reply@fishcap.app}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
 
     ports:
       - "3001:3001"
+    volumes:
+      - ./uploads:/app/uploads
 
 volumes:
   postgres_data:

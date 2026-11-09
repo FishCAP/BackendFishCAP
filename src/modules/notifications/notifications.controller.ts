@@ -1,12 +1,27 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { NotificationsService } from './notifications.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { UpdateNotificationDto } from './dto/update-notification.dto';
+import { PushNotificationsService } from './push-notifications.service';
+import { RegisterNotificationDeviceDto } from './dto/register-notification-device.dto';
 
 @Controller('notifications')
 export class NotificationsController {
-  constructor(private readonly notificationsService: NotificationsService) {}
+  constructor(
+    private readonly notificationsService: NotificationsService,
+    private readonly pushNotificationsService: PushNotificationsService,
+  ) {}
 
   @UseGuards(JwtAuthGuard)
   @Get()
@@ -23,6 +38,18 @@ export class NotificationsController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Post('device-token')
+  registerDeviceToken(@Req() req, @Body() body: RegisterNotificationDeviceDto) {
+    return this.pushNotificationsService.registerToken(req.user.id, body.token);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('device-token')
+  removeDeviceToken(@Req() req, @Body() body: RegisterNotificationDeviceDto) {
+    return this.pushNotificationsService.removeToken(req.user.id, body.token);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get(':id')
   findOne(@Req() req, @Param('id') id: string) {
     const userId = req.user?.id;
@@ -31,7 +58,11 @@ export class NotificationsController {
 
   @UseGuards(JwtAuthGuard)
   @Patch(':id')
-  update(@Req() req, @Param('id') id: string, @Body() updateNotificationDto: UpdateNotificationDto) {
+  update(
+    @Req() req,
+    @Param('id') id: string,
+    @Body() updateNotificationDto: UpdateNotificationDto,
+  ) {
     const userId = req.user?.id;
     return this.notificationsService.update(id, updateNotificationDto, userId);
   }

@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { randomUUID } from 'crypto';
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, HttpCode, HttpStatus, NotFoundException, UseGuards, Req, UploadedFile, UseInterceptors, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import * as multer from 'multer';
@@ -24,10 +25,8 @@ export class UsersController {
   /**
    * POST /api/users/:id/profile-image (or /api/users/me/profile-image)
    *
-   * Multipart upload of the user's profile picture. The file is streamed into
-   * memory by multer, validated, uploaded to Cloudinary by the backend, and
-   * the returned secure URL is persisted in users.profile_image. The Flutter
-   * app never talks to Cloudinary directly.
+   * Multipart upload of the user's profile picture. The file is validated and
+   * stored in Cloudinary when configured, or on local disk for development.
    */
   @Post(['me/profile-image', ':id/profile-image'])
   @UseGuards(JwtAuthGuard)
@@ -64,19 +63,38 @@ export class UsersController {
       throw new BadRequestException('No file uploaded. Field name must be "file".');
     }
 
-    if (!this.cloudinaryService.isConfigured()) {
-      throw new BadRequestException(
-        'Image upload is not configured on the server (missing Cloudinary credentials).',
-      );
-    }
-
-    const updated = await this.usersService.setProfileImage(targetUserId, file);
+    const updated = this.cloudinaryService.isConfigured()
+      ? await this.usersService.setProfileImage(targetUserId, file)
+      : await this.usersService.update(targetUserId, {
+          profileImage: await this._saveUploadedProfileImage(targetUserId, file),
+        });
 
     return {
       message: 'Profile image uploaded successfully',
       profile_image: updated.profileImage,
       data: updated,
     };
+  }
+
+  private async _saveUploadedProfileImage(
+    userId: string,
+    file: Express.Multer.File,
+  ): Promise<string> {
+    const extensionByMimeType: Record<string, string> = {
+      'image/jpeg': 'jpg',
+      'image/png': 'png',
+      'image/webp': 'webp',
+    };
+    const extension = extensionByMimeType[file.mimetype];
+    if (!extension) {
+      throw new BadRequestException('Unsupported profile image format.');
+    }
+
+    const uniqueName = `profile-${randomUUID()}.${extension}`;
+    const uploadDir = path.join(process.cwd(), 'uploads', 'profile-images');
+    await fs.promises.mkdir(uploadDir, { recursive: true });
+    await fs.promises.writeFile(path.join(uploadDir, uniqueName), file.buffer);
+    return `/uploads/profile-images/${uniqueName}`;
   }
 
   @Post()
@@ -130,15 +148,11 @@ export class UsersController {
     // profileImageBase64 + filename). The image is decoded, saved to disk
     // under uploads/profile-images/, and the public URL is stored.
     if (updateProfileDto.profileImageBase64) {
-      try {
-        profileImage = await this._saveProfileImage(
-          userId,
-          updateProfileDto.profileImageBase64 as string,
-          updateProfileDto.filename as string | undefined,
-        );
-      } catch (error) {
-        console.error('Failed to save profile image:', error);
-      }
+      profileImage = await this._saveProfileImage(
+        userId,
+        updateProfileDto.profileImageBase64 as string,
+        updateProfileDto.filename as string | undefined,
+      );
     }
 
     const updatedUser = await this.usersService.update(userId, {

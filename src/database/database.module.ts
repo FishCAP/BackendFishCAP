@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { AddProfileImagePublicIdToUser1747400002000 } from './migrations/1747400002000-add-profile-image-public-id-to-user';
+import { CreateNotificationDeviceTokens1790000000000 } from './migrations/1790000000000-create-notification-device-tokens';
 
 @Module({
   imports: [
@@ -9,6 +11,10 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
         const databaseUrl = configService.get<string>('DATABASE_URL');
+        const ssl =
+          configService.get<string>('DATABASE_SSL') === 'false'
+            ? false
+            : { rejectUnauthorized: false };
 
         // Schema auto-sync is opt-in (DB_SYNCHRONIZE=true) for a one-shot
         // bootstrap of a FRESH database from the TypeORM entities. It must
@@ -24,7 +30,13 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
             url: databaseUrl,
             autoLoadEntities: true,
             synchronize,
-            ssl: { rejectUnauthorized: false },
+            ssl,
+            migrations: [
+              AddProfileImagePublicIdToUser1747400002000,
+              CreateNotificationDeviceTokens1790000000000,
+            ],
+            migrationsRun: true,
+            migrationsTableName: 'fishcap_typeorm_migrations',
           };
         }
 
@@ -48,12 +60,20 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
           type: 'postgres',
           host,
           port: configService.get<number>('DATABASE_PORT', 5432),
-          username: configService.get<string>('DATABASE_USER'),
+          username:
+            configService.get<string>('DATABASE_USERNAME') ??
+            configService.get<string>('DATABASE_USER'),
           password: configService.get<string>('DATABASE_PASSWORD'),
           database: configService.get<string>('DATABASE_NAME'),
           autoLoadEntities: true,
           synchronize,
-          ssl: { rejectUnauthorized: false },
+          ssl,
+          migrations: [
+            AddProfileImagePublicIdToUser1747400002000,
+            CreateNotificationDeviceTokens1790000000000,
+          ],
+          migrationsRun: true,
+          migrationsTableName: 'fishcap_typeorm_migrations',
         };
       },
     }),

@@ -58,6 +58,31 @@ $ npm run test:e2e
 $ npm run test:cov
 ```
 
+## Profile image uploads
+
+The backend accepts multipart uploads at `POST /api/users/me/profile-image`.
+When Cloudinary credentials are configured, images are uploaded to Cloudinary.
+Without them, local development stores images in `uploads/profile-images`; the
+Docker Compose service mounts `./uploads` so those images survive restarts.
+
+To enable Cloudinary in Docker Compose, set `CLOUDINARY_CLOUD_NAME`,
+`CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET` in the environment.
+
+## Phone push notifications
+
+The Flutter app registers its Firebase Cloud Messaging (FCM) token with the
+authenticated `POST /api/notifications/device-token` endpoint. The backend
+stores per-user device tokens and sends an FCM push whenever it creates a
+notification. The token table is created by a TypeORM migration at startup.
+
+To enable delivery when the app is in the background or closed, create a
+Firebase service-account private key for the same Firebase project configured
+in the mobile app. Set the complete JSON document as the backend environment
+variable `FIREBASE_SERVICE_ACCOUNT_JSON` (for example, in Render's service
+Environment settings). Never commit the service-account JSON or put it in the
+Flutter app. Without this backend credential, in-app and foreground alerts
+continue to work, but background push delivery is disabled.
+
 ## Deployment
 
 When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
@@ -97,4 +122,3 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
-

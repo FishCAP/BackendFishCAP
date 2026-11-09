@@ -3,6 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { SensorsService } from './sensors.service';
 import { DeviceEntity } from './entities/device.entity';
 import { SensorDataEntity } from './entities/sensor-data.entity';
+import { PondEntity } from '../ponds/entities/pond.entity/pond.entity';
 import { DeviceGateway } from '../devices/device.gateway';
 import { NotificationsService } from '../notifications/notifications.service';
 
@@ -16,9 +17,12 @@ describe('SensorsService', () => {
   const deviceRepository = {
     findOne: jest.fn(),
   };
+  const pondRepository = {
+    update: jest.fn().mockResolvedValue({ affected: 1 }),
+  };
   const notificationsService = {
     create: jest.fn(),
-    findLatestByTitle: jest.fn(),
+    findLatestByTitle: jest.fn().mockResolvedValue(null),
   };
   const deviceGateway = {
     broadcastSensorData: jest.fn(),
@@ -36,6 +40,10 @@ describe('SensorsService', () => {
         {
           provide: getRepositoryToken(DeviceEntity),
           useValue: deviceRepository,
+        },
+        {
+          provide: getRepositoryToken(PondEntity),
+          useValue: pondRepository,
         },
         {
           provide: NotificationsService,
@@ -62,6 +70,7 @@ describe('SensorsService', () => {
     }));
     deviceRepository.findOne.mockResolvedValue({
       deviceCode: deviceId,
+      pondId: 'pond-123',
       pond: { owner: { id: 'user-123' } },
     });
     notificationsService.create.mockResolvedValue({
@@ -88,6 +97,7 @@ describe('SensorsService', () => {
     sensorDataRepository.findOne.mockResolvedValue(null);
     deviceRepository.findOne.mockResolvedValue({
       deviceCode: 'DEVICE-001',
+      pondId: 'pond-123',
       pond: { owner: { id: 'user-123' } },
     });
     notificationsService.create.mockResolvedValue({ id: 'note-1' });
@@ -96,7 +106,7 @@ describe('SensorsService', () => {
 
     expect(notificationsService.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        userId: 'user-123',
+        user: { id: 'user-123' },
         title: 'Low feed stock',
         message: expect.stringContaining('DEVICE-001'),
       }),
@@ -111,7 +121,7 @@ describe('SensorsService', () => {
 
     expect(notificationsService.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        userId: 'user-123',
+        user: { id: 'user-123' },
         title: 'Water pH alert',
         message: expect.stringContaining('5.20'),
       }),
@@ -123,6 +133,9 @@ describe('SensorsService', () => {
 
   it('should not repeat the pH alert while pH stays out of range', async () => {
     setupOwnerDevice('DEVICE-001');
+    notificationsService.findLatestByTitle.mockResolvedValue({
+      createdAt: new Date(),
+    });
     sensorDataRepository.findOne.mockResolvedValue({
       id: 'sensor-0',
       deviceId: 'DEVICE-001',
@@ -147,7 +160,7 @@ describe('SensorsService', () => {
 
     expect(notificationsService.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        userId: 'user-123',
+        user: { id: 'user-123' },
         title: 'Dissolved oxygen alert',
         message: expect.stringContaining('2.1'),
       }),

@@ -4,17 +4,32 @@ import { Repository } from 'typeorm';
 import { NotificationEntity } from './entities/notification.entity/notification.entity';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { UpdateNotificationDto } from './dto/update-notification.dto';
+import { PushNotificationsService } from './push-notifications.service';
 
 @Injectable()
 export class NotificationsService {
   constructor(
     @InjectRepository(NotificationEntity)
     private readonly notificationsRepository: Repository<NotificationEntity>,
+    private readonly pushNotificationsService: PushNotificationsService,
   ) {}
 
-  async create(createNotificationDto: CreateNotificationDto): Promise<NotificationEntity> {
-    const notification = this.notificationsRepository.create(createNotificationDto);
-    return this.notificationsRepository.save(notification);
+  async create(
+    createNotificationDto: CreateNotificationDto,
+  ): Promise<NotificationEntity> {
+    const notification = this.notificationsRepository.create(
+      createNotificationDto,
+    );
+    const savedNotification =
+      await this.notificationsRepository.save(notification);
+    const userId =
+      savedNotification.userId ??
+      savedNotification.user?.id ??
+      createNotificationDto.userId;
+    if (userId) {
+      await this.pushNotificationsService.sendToUser(userId, savedNotification);
+    }
+    return savedNotification;
   }
 
   async findAll(userId?: string): Promise<NotificationEntity[]> {
@@ -60,14 +75,21 @@ export class NotificationsService {
   }
 
   /** Most recent notification with the given title for a user (used to throttle reminders). */
-  async findLatestByTitle(userId: string, title: string): Promise<NotificationEntity | null> {
+  async findLatestByTitle(
+    userId: string,
+    title: string,
+  ): Promise<NotificationEntity | null> {
     return this.notificationsRepository.findOne({
       where: { user: { id: userId }, title },
       order: { createdAt: 'DESC' },
     });
   }
 
-  async update(id: string, updateNotificationDto: UpdateNotificationDto, userId?: string): Promise<NotificationEntity> {
+  async update(
+    id: string,
+    updateNotificationDto: UpdateNotificationDto,
+    userId?: string,
+  ): Promise<NotificationEntity> {
     const notification = await this.findOne(id, userId);
     const updated = { ...notification, ...updateNotificationDto };
     await this.notificationsRepository.save(updated);

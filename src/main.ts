@@ -13,7 +13,25 @@ async function bootstrap() {
   app.use(json({ limit: '15mb' }));
   app.use(urlencoded({ limit: '15mb', extended: true }));
 
-    // Serve uploaded files (e.g. profile images) statically
+    // Allow the frontend (Firebase Hosting) to access uploaded profile images
+    // served as static assets. Static files bypass NestJS route handlers, so
+    // the CORS headers must be applied explicitly before useStaticAssets
+    // handles the request (otherwise the response lacks
+    // Access-Control-Allow-Origin and browsers block the image).
+  app.use('/uploads/', (req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+    }
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204).end();
+      return;
+    }
+    next();
+  });
   (app as any).useStaticAssets('uploads', { prefix: '/uploads/' });
 
   app.setGlobalPrefix('api');

@@ -20,6 +20,7 @@ export const PROFILE_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
 /** Accepted profile image mime types. */
 export const PROFILE_IMAGE_MIME_TYPES = [
   'image/jpeg',
+  'image/jpg',
   'image/png',
   'image/webp',
 ];

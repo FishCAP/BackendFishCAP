@@ -82,6 +82,7 @@ export class UsersController {
   ): Promise<string> {
     const extensionByMimeType: Record<string, string> = {
       'image/jpeg': 'jpg',
+      'image/jpg': 'jpg',
       'image/png': 'png',
       'image/webp': 'webp',
     };

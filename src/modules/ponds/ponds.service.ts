@@ -290,8 +290,31 @@ export class PondsService {
       // Non-fatal: fallback to global thresholds above.
     }
 
+    const isAbnormal = (value: number | null, status: string) =>
+      value != null &&
+      value > 0 &&
+      status !== 'Good' &&
+      status !== 'Moderate' &&
+      status !== 'Unknown';
+    const lowStock =
+      latest?.lowStock === true ||
+      (remainingStockGrams != null &&
+        remainingStockGrams > 0 &&
+        remainingStockGrams < 100);
+    const hasAlert =
+      pond.hasAlert === true ||
+      isAbnormal(pH, pHStatus) ||
+      (temperature != null &&
+        temperature !== 0 &&
+        temperatureStatus !== 'Good' &&
+        temperatureStatus !== 'Moderate' &&
+        temperatureStatus !== 'Unknown') ||
+      isAbnormal(tds, PondsService.tdsStatus(tds)) ||
+      lowStock;
+
     return {
       ...pond,
+      hasAlert,
       oxygen,
       oxygenStatus: PondsService.oxygenStatus(oxygen),
       tds,
